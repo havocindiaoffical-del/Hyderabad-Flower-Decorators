@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/select";
 import {
   getGalleryImages, addGalleryImage, toggleFeatured, deleteGalleryImage, type GalleryImageData,
-} from "@/lib/firestore-helpers";
+} from "@/lib/db-helpers";
 import { uploadGalleryImage, deleteImage } from "@/lib/firebase-storage";
 
 const categories = ["Wedding", "Housewarming", "Baby Shower", "Pooja", "Corporate", "Custom"];
@@ -110,7 +110,7 @@ export default function AdminGallery() {
       {!firebaseReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore and Storage to manage gallery images.</p>
+          <p className="text-sm text-charcoal font-body">Database connection issue. Check your database and Firebase Storage setup.</p>
         </div>
       )}
 
@@ -130,7 +130,7 @@ export default function AdminGallery() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading || !newTitle || !newCategory || !firebaseReady} variant="default" className="w-full gap-2">
+              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading || !newTitle || !newCategory} variant="default" className="w-full gap-2">
                 {isUploading ? <div className="w-4 h-4 border-2 border-charcoal/30 border-t-charcoal rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
                 {isUploading ? "Uploading..." : "Upload Image"}
               </Button>
@@ -144,7 +144,7 @@ export default function AdminGallery() {
       {images.length === 0 ? (
         <div className="text-center py-16">
           <ImageIcon className="w-12 h-12 text-border-light mx-auto mb-4" />
-          <p className="text-warm-gray font-body">{firebaseReady ? "No images uploaded yet" : "Connect Firebase to manage images"}</p>
+          <p className="text-warm-gray font-body">{firebaseReady ? "No images uploaded yet" : "Check database connection"}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

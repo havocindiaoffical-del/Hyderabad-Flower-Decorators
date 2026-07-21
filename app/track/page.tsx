@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Ticket, CheckCircle2, Clock, AlertCircle, XCircle, Loader2, ArrowRight, Copy, Check } from "lucide-react";
 import { useUserAuth } from "@/components/providers/UserAuth";
-import { getBookingByTicketId, getBookingsByUserUid, getBookingsByPhone, type BookingData } from "@/lib/firestore-helpers";
+import { getBookingByTicketId, getBookingsByUserUid, getBookingsByPhone, type BookingData } from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 const statusSteps = ["pending", "confirmed", "in_progress", "completed"];

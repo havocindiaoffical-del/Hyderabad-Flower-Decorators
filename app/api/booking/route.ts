@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createBooking } from "@/lib/firestore-helpers";
+import { createBooking } from "@/lib/db-helpers";
 import { uploadBookingImage } from "@/lib/firebase-storage";
 
 export async function POST(request: NextRequest) {
@@ -45,13 +45,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate ticket ID
-    const prefix = "HFD";
-    const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-    const ticket_id = `${prefix}-${timestamp}-${random}`;
-
-    // Try to upload images to Firebase Storage
+    // Upload images to Firebase Storage
     const imageUrls: string[] = [];
     const imageEntries = Array.from(formData.entries()).filter(([key]) =>
       key.startsWith("image_")
@@ -71,9 +65,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Try to create booking in Firestore
+    // Create booking in Neon database
     let bookingId = "";
-    let firestoreSaved = false;
+    let ticket_id = "";
 
     try {
       const result = await createBooking({
@@ -92,9 +86,13 @@ export async function POST(request: NextRequest) {
         user_uid: user_uid || "",
       });
       bookingId = result.id;
-      firestoreSaved = true;
-    } catch (firestoreError) {
-      // Firestore not available — still return success with ticket ID
+      ticket_id = result.ticket_id;
+    } catch {
+      // Database not available — generate local ticket ID as fallback
+      const prefix = "HFD";
+      const timestamp = Date.now().toString(36).toUpperCase();
+      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+      ticket_id = `${prefix}-${timestamp}-${random}`;
       bookingId = `local-${Date.now()}`;
     }
 
@@ -135,15 +133,14 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { 
-        success: true, 
-        bookingId, 
+      {
+        success: true,
+        bookingId,
         ticket_id,
-        firestoreSaved,
       },
       { status: 201 }
     );
-  } catch (error) {
+  } catch {
     return NextResponse.json(
       { error: "Something went wrong. Please try again or call us at +91 98765 43210" },
       { status: 500 }

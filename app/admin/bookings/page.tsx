@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   getBookings, updateBookingStatus, type BookingData,
-} from "@/lib/firestore-helpers";
+} from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 const ITEMS_PER_PAGE = 10;

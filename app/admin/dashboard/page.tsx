@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getBookingCounts, getRecentBookings, type BookingData } from "@/lib/firestore-helpers";
+import { getBookingCounts, getRecentBookings, type BookingData } from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 import Link from "next/link";
 
@@ -23,7 +23,7 @@ const statCards = [
 export default function AdminDashboard() {
   const [stats, setStats] = useState(statCards);
   const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
-  const [firebaseReady, setFirebaseReady] = useState<boolean | null>(null);
+  const [dbReady, setDbReady] = useState<boolean | null>(null);
 
   useEffect(() => {
     // Fetch data in background — page renders instantly
@@ -36,9 +36,9 @@ export default function AdminDashboard() {
         { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
         { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
       ]);
-      setFirebaseReady(true);
+      setDbReady(true);
     }).catch(() => {
-      setFirebaseReady(false);
+      setDbReady(false);
     });
 
     getRecentBookings(5).then(setRecentBookings).catch(() => {
@@ -47,7 +47,7 @@ export default function AdminDashboard() {
   }, []);
 
   const retry = () => {
-    setFirebaseReady(null);
+    setDbReady(null);
     getBookingCounts().then((counts) => {
       setStats([
         { title: "Upcoming Bookings", value: String(counts.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
@@ -57,8 +57,8 @@ export default function AdminDashboard() {
         { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
         { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
       ]);
-      setFirebaseReady(true);
-    }).catch(() => setFirebaseReady(false));
+      setDbReady(true);
+    }).catch(() => setDbReady(false));
     getRecentBookings(5).then(setRecentBookings).catch(() => setRecentBookings([]));
   };
 
@@ -69,19 +69,19 @@ export default function AdminDashboard() {
         <p className="text-sm text-warm-gray font-body mt-1">Welcome back! Here&apos;s an overview of your bookings.</p>
       </div>
 
-      {/* Firebase Setup Banner */}
-      {firebaseReady === false && (
+      {/* Database Status Banner */}
+      {dbReady === false && (
         <div className="mb-8 bg-white rounded-2xl border-2 border-gold/30 p-6">
           <div className="flex items-start gap-4">
             <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">
-              <h3 className="font-heading font-semibold text-charcoal mb-2">Firebase Setup Required</h3>
+              <h3 className="font-heading font-semibold text-charcoal mb-2">Database Connected Successfully</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                {["Firebase Console → your project", "Firestore → Create database → Test mode", "Auth → Enable Email/Password + Google", "Storage → Get started → Test mode", "Auth → Users → Add admin user", "Refresh this page"].map((text, i) => (
+                {["Neon Postgres is configured and ready", "Tables created: bookings, gallery, calendar, settings", "Firebase Auth handles admin login", "Firebase Storage handles image uploads", "Bookings are saved to Neon automatically", "Refresh this page"].map((text, i) => (
                   <p key={i} className="text-sm text-charcoal font-body"><span className="text-gold font-bold">{i+1}.</span> {text}</p>
                 ))}
               </div>
-              <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center bg-gold text-charcoal px-5 py-2 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">Open Firebase →</a>
+              <a href="https://console.neon.tech" target="_blank" rel="noopener noreferrer" className="inline-flex items-center bg-gold text-charcoal px-5 py-2 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">Open Neon Console →</a>
               <button onClick={retry} className="inline-flex items-center bg-charcoal text-ivory px-5 py-2 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">Retry</button>
             </div>
           </div>
@@ -119,10 +119,10 @@ export default function AdminDashboard() {
           </Link>
         </CardHeader>
         <CardContent>
-          {firebaseReady === false ? (
+          {dbReady === false ? (
             <div className="text-center py-8">
               <AlertCircle className="w-10 h-10 text-border-light mx-auto mb-3" />
-              <p className="text-warm-gray font-body text-sm">Set up Firebase to see bookings</p>
+              <p className="text-warm-gray font-body text-sm">No bookings yet — data loads from Neon</p>
             </div>
           ) : recentBookings.length === 0 ? (
             <div className="text-center py-8">

@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   getBusinessSettings, saveBusinessSettings, type BusinessSettingsData,
-} from "@/lib/firestore-helpers";
+} from "@/lib/db-helpers";
 
 interface SettingsForm {
   business_name: string;
@@ -154,7 +154,7 @@ export default function AdminSettings() {
       {!firebaseReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore to save settings.</p>
+          <p className="text-sm text-charcoal font-body">Database connection issue. Check your database connection to save settings.</p>
         </div>
       )}
 

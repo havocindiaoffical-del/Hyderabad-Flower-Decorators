@@ -12,7 +12,7 @@ import {
 import {
   getBookingsForDateRange, getCalendarBlocks, setCalendarBlock,
   type BookingData, type CalendarBlockData,
-} from "@/lib/firestore-helpers";
+} from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface CalendarDay {
@@ -144,7 +144,7 @@ export default function AdminCalendar() {
       {!firebaseReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore to see booking data on the calendar.</p>
+          <p className="text-sm text-charcoal font-body">Database connection issue. Check your Neon database connection.</p>
         </div>
       )}
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { updateBookingStatus, getBookings } from "@/lib/firestore-helpers";
+import { updateBookingStatus, getBookings } from "@/lib/db-helpers";
 
 export async function GET(request: NextRequest) {
   try {
