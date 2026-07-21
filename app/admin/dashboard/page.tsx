@@ -38,6 +38,7 @@ export default function AdminDashboard() {
   const [stats, setStats] = useState(statCards);
   const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
   const [dbReady, setDbReady] = useState<boolean | null>(null);
+  const [dbError, setDbError] = useState<string>("");
 
   const buildStats = (c: { upcoming: number; today: number; completed: number; cancelled: number; pending: number }) => [
     { title: "Upcoming Events", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
@@ -52,25 +53,26 @@ export default function AdminDashboard() {
     fetch("/api/admin/stats")
       .then((r) => r.json())
       .then((data) => {
-        if (data.error) { setDbReady(false); return; }
+        if (data.error) { setDbReady(false); setDbError(data.error); return; }
         setStats(buildStats(data.counts));
         setRecentBookings(data.recentBookings || []);
         setDbReady(true);
       })
-      .catch(() => setDbReady(false));
+      .catch(() => { setDbReady(false); setDbError("Network error — could not reach server"); });
   }, []);
 
   const retry = () => {
     setDbReady(null);
+    setDbError("");
     fetch("/api/admin/stats")
       .then((r) => r.json())
       .then((data) => {
-        if (data.error) { setDbReady(false); return; }
+        if (data.error) { setDbReady(false); setDbError(data.error); return; }
         setStats(buildStats(data.counts));
         setRecentBookings(data.recentBookings || []);
         setDbReady(true);
       })
-      .catch(() => setDbReady(false));
+      .catch(() => { setDbReady(false); setDbError("Network error — could not reach server"); });
   };
 
   return (
@@ -86,7 +88,16 @@ export default function AdminDashboard() {
             <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">
               <h3 className="font-heading font-semibold text-charcoal mb-2">Database Connection Issue</h3>
-              <p className="text-sm text-charcoal font-body mb-4">Check your DATABASE_URL environment variable in Netlify.</p>
+              {dbError.includes("Request Unit limit") ? (
+                <>
+                  <p className="text-sm text-charcoal font-body mb-2">Your CockroachDB cluster has reached its monthly free RU limit and is disabled.</p>
+                  <p className="text-sm text-charcoal font-body mb-4">Go to <a href="https://cockroachlabs.cloud" target="_blank" rel="noopener noreferrer" className="text-gold underline hover:no-underline">CockroachDB Cloud Console</a> → Cluster Overview → Edit Cluster → Increase your resource limits, or wait until the next billing cycle (1st of the month) when free RUs reset.</p>
+                </>
+              ) : dbError.includes("DATABASE_URL") ? (
+                <p className="text-sm text-charcoal font-body mb-4">The <code className="bg-cream px-1.5 py-0.5 rounded text-xs">DATABASE_URL</code> environment variable is not set in Netlify. Go to Site settings → Environment variables and add it.</p>
+              ) : (
+                <p className="text-sm text-charcoal font-body mb-4">{dbError || "Check your DATABASE_URL environment variable in Netlify."}</p>
+              )}
               <button onClick={retry} className="inline-flex items-center bg-charcoal text-ivory px-5 py-2 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">Retry</button>
             </div>
           </div>

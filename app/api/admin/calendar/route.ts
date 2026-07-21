@@ -14,8 +14,9 @@ export async function GET(request: NextRequest) {
       getCalendarBlocks(startDate, endDate),
     ]);
     return NextResponse.json({ bookings, blocks });
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch calendar data" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch calendar data";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -27,7 +28,8 @@ export async function POST(request: NextRequest) {
     }
     await setCalendarBlock(date, blocked, reason || "");
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to update calendar block" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to update calendar block";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

@@ -11,8 +11,9 @@ export async function GET(request: NextRequest) {
     const result = await getBookings({ status, search, page });
 
     return NextResponse.json(result);
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch bookings" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch bookings";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -33,7 +34,8 @@ export async function PATCH(request: NextRequest) {
     await updateBookingStatus(bookingId, status, adminNotes);
 
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to update booking" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to update booking";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

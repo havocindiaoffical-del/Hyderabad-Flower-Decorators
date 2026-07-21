@@ -8,7 +8,8 @@ export async function GET() {
       getRecentBookings(5),
     ]);
     return NextResponse.json({ counts, recentBookings });
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch stats" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch stats";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

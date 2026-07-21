@@ -6,8 +6,9 @@ export async function GET() {
   try {
     const images = await getGalleryImages();
     return NextResponse.json({ images });
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch gallery" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to fetch gallery";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -25,8 +26,9 @@ export async function POST(request: NextRequest) {
     const url = await uploadGalleryImage(file);
     const id = await addGalleryImage({ url, title, category, featured: false });
     return NextResponse.json({ success: true, id, url });
-  } catch {
-    return NextResponse.json({ error: "Failed to upload image" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to upload image";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -38,8 +40,9 @@ export async function PATCH(request: NextRequest) {
     }
     await toggleFeatured(id, featured);
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to toggle featured" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to toggle featured";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 
@@ -52,7 +55,8 @@ export async function DELETE(request: NextRequest) {
     try { await deleteImage(url); } catch { /* storage delete may fail */ }
     await deleteGalleryImage(id);
     return NextResponse.json({ success: true });
-  } catch {
-    return NextResponse.json({ error: "Failed to delete image" }, { status: 500 });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : "Failed to delete image";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
