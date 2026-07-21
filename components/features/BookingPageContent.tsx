@@ -184,7 +184,7 @@ export default function BookingPageContent() {
                     <p className="text-sm font-medium text-charcoal font-body">{user.displayName || user.email}</p>
                     <p className="text-xs text-warm-gray font-body">Signed in — your details are auto-filled</p>
                   </div>
-                  <button type="button" onClick={() => useUserAuth} className="ml-auto text-xs text-gold font-body hover:underline">Change</button>
+                  <button type="button" onClick={() => {}} className="ml-auto text-xs text-gold font-body hover:underline">Signed in</button>
                 </div>
               ) : (
                 <button
