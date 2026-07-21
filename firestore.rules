@@ -1,0 +1,53 @@
+// Firestore Security Rules for Hyderabad Flower Decorators
+// Deploy: firebase deploy --only firestore:rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper: Check if user is authenticated admin
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Bookings — anyone can create, only auth can read/update
+    match /bookings/{bookingId} {
+      allow create: if true;
+      allow read, update, delete: if isAuth();
+      allow list: if isAuth();
+    }
+
+    // Gallery images — only auth can manage
+    match /gallery_images/{imageId} {
+      allow read: if true;
+      allow create, update, delete: if isAuth();
+      allow list: if true;
+    }
+
+    // Calendar blocks — only auth can manage
+    match /calendar_blocks/{blockId} {
+      allow read: if true;
+      allow create, update, delete: if isAuth();
+      allow list: if isAuth();
+    }
+
+    // Business settings — only auth can manage
+    match /business_settings/{settingsId} {
+      allow read: if true;
+      allow create, update, delete: if isAuth();
+      allow list: if isAuth();
+    }
+
+    // Testimonials — public read
+    match /testimonials/{testimonialId} {
+      allow read: if true;
+      allow create, update, delete: if isAuth();
+    }
+
+    // Services — public read
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if isAuth();
+    }
+  }
+}

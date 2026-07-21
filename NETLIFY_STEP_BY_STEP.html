@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netlify Deployment Fix - Step by Step Guide</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #1a1a1a; color: #faf8f5; line-height: 1.7; }
+  .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+  h1 { font-size: 2rem; color: #B8935F; margin-bottom: 8px; text-align: center; }
+  .subtitle { text-align: center; color: #6b6560; margin-bottom: 40px; font-size: 1.1rem; }
+  .fix-section { background: #242424; border: 1px solid #333; border-radius: 16px; padding: 32px; margin-bottom: 32px; }
+  .fix-number { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; background: #B8935F; color: #1a1a1a; border-radius: 50%; font-weight: 700; font-size: 1.2rem; margin-right: 12px; flex-shrink: 0; }
+  .fix-title { display: flex; align-items: center; margin-bottom: 20px; }
+  .fix-title h2 { font-size: 1.3rem; color: #faf8f5; }
+  .step { margin-bottom: 28px; padding-left: 20px; border-left: 3px solid #B8935F; }
+  .step-num { color: #B8935F; font-weight: 700; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 4px; }
+  .step-text { font-size: 1rem; color: #e0ddd8; }
+  .step-text strong { color: #faf8f5; }
+  .step-text .click { background: #B8935F; color: #1a1a1a; padding: 2px 8px; border-radius: 4px; font-weight: 600; }
+  .step-text .type { background: #3a3a3a; border: 1px solid #555; padding: 2px 8px; border-radius: 4px; font-family: 'Courier New', monospace; color: #B8935F; }
+  
+  /* UI Mockup Styles */
+  .ui-mockup { background: #1a1a1a; border: 2px solid #444; border-radius: 12px; margin: 16px 0; overflow: hidden; }
+  .ui-mockup-header { background: #2a2a2a; padding: 10px 16px; border-bottom: 1px solid #444; display: flex; gap: 8px; align-items: center; }
+  .ui-dot { width: 10px; height: 10px; border-radius: 50%; }
+  .ui-dot.red { background: #ff5f57; }
+  .ui-dot.yellow { background: #febc2e; }
+  .ui-dot.green { background: #28c840; }
+  .ui-mockup-url { background: #333; border-radius: 6px; padding: 4px 12px; margin-left: 12px; font-size: 0.75rem; color: #888; flex: 1; }
+  .ui-mockup-body { padding: 0; }
+  
+  /* Sidebar mockup */
+  .sidebar-layout { display: flex; min-height: 280px; }
+  .sidebar { width: 200px; background: #222; border-right: 1px solid #333; padding: 12px 0; flex-shrink: 0; }
+  .sidebar-item { padding: 8px 16px; font-size: 0.8rem; color: #888; cursor: default; }
+  .sidebar-item.active { background: #B8935F22; color: #B8935F; font-weight: 600; border-left: 3px solid #B8935F; }
+  .sidebar-item.highlight { background: #28c84022; color: #28c840; font-weight: 600; border-left: 3px solid #28c840; animation: pulse-highlight 2s infinite; }
+  .main-content { flex: 1; padding: 20px; }
+  .content-heading { font-size: 1.1rem; font-weight: 600; color: #faf8f5; margin-bottom: 16px; }
+  .setting-row { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid #333; }
+  .setting-label { font-size: 0.85rem; color: #888; }
+  .setting-value { font-size: 0.85rem; color: #faf8f5; background: #333; padding: 4px 12px; border-radius: 6px; }
+  .setting-value.wrong { color: #ff5f57; background: #ff5f5722; border: 1px solid #ff5f57; }
+  .setting-value.correct { color: #28c840; background: #28c84022; border: 1px solid #28c840; }
+  .btn-mock { display: inline-block; padding: 6px 16px; border-radius: 6px; font-size: 0.8rem; font-weight: 600; }
+  .btn-gold { background: #B8935F; color: #1a1a1a; }
+  .btn-danger { background: #ff5f5722; color: #ff5f57; border: 1px solid #ff5f57; }
+  
+  @keyframes pulse-highlight {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.6; }
+  }
+  
+  .arrow-indicator { color: #B8935F; font-size: 1.5rem; font-weight: bold; margin: 4px 0; }
+  
+  .warning-box { background: #febc2e22; border: 1px solid #febc2e; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .warning-box p { color: #febc2e; font-size: 0.9rem; }
+  .warning-box strong { color: #fff; }
+  
+  .success-box { background: #28c84022; border: 1px solid #28c840; border-radius: 8px; padding: 16px; margin: 16px 0; }
+  .success-box p { color: #28c840; font-size: 0.9rem; }
+  
+  .divider { height: 1px; background: #333; margin: 40px 0; }
+  
+  .screenshot-label { text-align: center; color: #6b6560; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.15em; margin: 8px 0; }
+  
+  .tab-bar { display: flex; gap: 0; border-bottom: 1px solid #333; background: #222; }
+  .tab { padding: 10px 20px; font-size: 0.8rem; color: #888; }
+  .tab.active { color: #B8935F; border-bottom: 2px solid #B8935F; }
+  .tab.highlight { color: #28c840; border-bottom: 2px solid #28c840; animation: pulse-highlight 2s infinite; }
+  
+  .integrations-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; padding: 20px; }
+  .integration-card { background: #2a2a2a; border: 1px solid #333; border-radius: 8px; padding: 16px; }
+  .integration-card.highlight { border-color: #28c840; animation: pulse-highlight 2s infinite; }
+  .integration-name { font-size: 0.9rem; font-weight: 600; color: #faf8f5; }
+  .integration-desc { font-size: 0.75rem; color: #888; margin-top: 4px; }
+  .integration-action { margin-top: 8px; }
+  
+  .final-steps { background: #B8935F22; border: 2px solid #B8935F; border-radius: 16px; padding: 32px; text-align: center; }
+  .final-steps h2 { color: #B8935F; margin-bottom: 16px; }
+  .final-steps ol { text-align: left; max-width: 400px; margin: 0 auto; }
+  .final-steps li { margin-bottom: 12px; color: #e0ddd8; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <h1>Netlify Deployment Fix</h1>
+  <p class="subtitle">Follow these 2 fixes exactly — your code is perfect, only dashboard settings need changing</p>
+
+  <!-- ==================== FIX 1 ==================== -->
+  <div class="fix-section">
+    <div class="fix-title">
+      <span class="fix-number">1</span>
+      <h2>Change Publish Directory</h2>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 1</p>
+      <p class="step-text">Open <strong>app.netlify.com</strong> and click on your site <strong>"Hyderabad Flower Decorators"</strong></p>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 2</p>
+      <p class="step-text">Look at the <strong>top navigation bar</strong> of your site dashboard. Click on <span class="click">Site configuration</span></p>
+      <div class="ui-mockup">
+        <div class="ui-mockup-header">
+          <span class="ui-dot red"></span><span class="ui-dot yellow"></span><span class="ui-dot green"></span>
+          <span class="ui-mockup-url">app.netlify.com/sites/your-site/...</span>
+        </div>
+        <div class="tab-bar">
+          <div class="tab">Overview</div>
+          <div class="tab">Deploys</div>
+          <div class="tab highlight">Site configuration</div>
+          <div class="tab">Integrations</div>
+          <div class="tab">Logs</div>
+        </div>
+        <p class="screenshot-label">↑ Click "Site configuration" (highlighted in green)</p>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 3</p>
+      <p class="step-text">In the <strong>left sidebar</strong>, under "Build & deploy", click <span class="click">Continuous deployment</span></p>
+      <div class="ui-mockup">
+        <div class="sidebar-layout">
+          <div class="sidebar">
+            <div class="sidebar-item">General</div>
+            <div class="sidebar-item">Site name</div>
+            <div class="sidebar-item">Domain management</div>
+            <div class="sidebar-item" style="color:#B8935F; font-weight:600;">Build & deploy</div>
+            <div class="sidebar-item active">Continuous deployment</div>
+            <div class="sidebar-item">Build image</div>
+            <div class="sidebar-item">Environment variables</div>
+            <div class="sidebar-item">Post processing</div>
+            <div class="sidebar-item">Deploy notifications</div>
+          </div>
+          <div class="main-content">
+            <p style="color:#888; font-size:0.85rem;">→ This page shows your build settings</p>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 4</p>
+      <p class="step-text">Scroll down to the <strong>"Build settings"</strong> section. Click the <span class="click">Edit settings</span> button (top-right of that section)</p>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 5</p>
+      <p class="step-text">Find the <strong>"Publish directory"</strong> field. It currently shows something wrong (empty or the repo root). Change it to:</p>
+      <p style="text-align:center; margin:16px 0;"><span class="type">.next</span></p>
+      <div class="warning-box">
+        <p>⚠️ <strong>Type exactly: <code>.next</code></strong> — with the dot at the start. No spaces. No slashes. No "out" or "build".</p>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 6</p>
+      <p class="step-text">Click <span class="click">Save</span> at the bottom of the form</p>
+    </div>
+    
+    <div class="success-box">
+      <p>✅ <strong>Fix 1 done!</strong> The publish directory should now show <code>.next</code></p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ==================== FIX 2 ==================== -->
+  <div class="fix-section">
+    <div class="fix-title">
+      <span class="fix-number">2</span>
+      <h2>Remove the Old Next.js Plugin (v4)</h2>
+    </div>
+    
+    <p style="color:#888; margin-bottom:20px; font-size:0.95rem;">Your Netlify dashboard installed an old v4 plugin that's incompatible with Next.js 16. We need to remove it so the v5 plugin from your package.json takes over.</p>
+    
+    <div class="step">
+      <p class="step-num">Step 1</p>
+      <p class="step-text">Go back to your site's top navigation bar. Click on <span class="click">Integrations</span></p>
+      <div class="ui-mockup">
+        <div class="tab-bar">
+          <div class="tab">Overview</div>
+          <div class="tab">Deploys</div>
+          <div class="tab">Site configuration</div>
+          <div class="tab highlight">Integrations</div>
+          <div class="tab">Logs</div>
+        </div>
+        <p class="screenshot-label">↑ Click "Integrations" (highlighted in green)</p>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 2</p>
+      <p class="step-text">You'll see a list of installed integrations. Look for <strong>"Next.js"</strong> or <strong>"@netlify/plugin-nextjs"</strong>. Click on it.</p>
+      <div class="ui-mockup">
+        <div class="integrations-grid">
+          <div class="integration-card highlight">
+            <div class="integration-name">Next.js</div>
+            <div class="integration-desc">@netlify/plugin-nextjs v4.41.6</div>
+            <div class="integration-action"><span class="btn-mock btn-danger">Uninstall</span></div>
+          </div>
+          <div class="integration-card">
+            <div class="integration-name">Some other plugin</div>
+            <div class="integration-desc">...</div>
+          </div>
+        </div>
+        <p class="screenshot-label">↑ Click the Next.js integration (highlighted in green)</p>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 3</p>
+      <p class="step-text">On the integration detail page, scroll down to the <strong>"Danger zone"</strong> section. Click <span class="click">Uninstall this extension</span> (or <span class="click">Remove</span>)</p>
+      <div class="ui-mockup">
+        <div style="padding:20px;">
+          <div style="font-size:1rem; font-weight:600; margin-bottom:12px;">Next.js</div>
+          <div style="font-size:0.85rem; color:#888; margin-bottom:20px;">@netlify/plugin-nextjs — Automatically configures Next.js on Netlify</div>
+          <div style="border:1px solid #ff5f57; border-radius:8px; padding:16px; margin-top:20px;">
+            <div style="color:#ff5f57; font-weight:600; font-size:0.85rem; margin-bottom:8px;">⚠️ DANGER ZONE</div>
+            <p style="font-size:0.8rem; color:#888; margin-bottom:12px;">Uninstalling will remove this integration from all sites using it.</p>
+            <span class="btn-mock btn-danger">Uninstall this extension</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 4</p>
+      <p class="step-text">Confirm the uninstall when prompted</p>
+    </div>
+
+    <div class="warning-box">
+      <p>⚠️ <strong>Can't find the integrations page?</strong> Try going to: <code>https://app.netlify.com/teams/YOUR-TEAM/extensions?tab=installed</code> (replace YOUR-TEAM with your team name)</p>
+    </div>
+    
+    <div class="warning-box">
+      <p>⚠️ <strong>Still can't find it?</strong> Some users report that UI-installed plugins can't be removed through the dashboard. If that happens, go to <strong>Site configuration → Build & deploy → Continuous deployment → Build settings</strong> and check if there's a "Plugins" section where you can disable it.</p>
+    </div>
+    
+    <div class="success-box">
+      <p>✅ <strong>Fix 2 done!</strong> The old v4 plugin is removed. Your package.json's v5.15.12 will now be used automatically.</p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ==================== FIX 3 (Optional) ==================== -->
+  <div class="fix-section">
+    <div class="fix-title">
+      <span class="fix-number">3</span>
+      <h2>Add Resend API Key (Optional)</h2>
+    </div>
+    <p style="color:#888; margin-bottom:16px;">Only needed if you want email notifications when bookings come in. The site works without it.</p>
+    
+    <div class="step">
+      <p class="step-num">Step 1</p>
+      <p class="step-text">Go to <span class="click">Site configuration</span> → <span class="click">Environment variables</span> (in the left sidebar under "Build & deploy")</p>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 2</p>
+      <p class="step-text">Click <span class="click">Add a variable</span></p>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 3</p>
+      <p class="step-text">Key: <span class="type">RESEND_API_KEY</span> &nbsp;&nbsp; Value: <span class="type">re_your_key_here</span></p>
+    </div>
+    
+    <div class="step">
+      <p class="step-num">Step 4</p>
+      <p class="step-text">Click <span class="click">Save</span></p>
+    </div>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ==================== FINAL DEPLOY ==================== -->
+  <div class="final-steps">
+    <h2>🚀 Final Step: Deploy</h2>
+    <ol>
+      <li>Click on the <strong>"Deploys"</strong> tab in the top navigation</li>
+      <li>Click <strong>"Trigger deploy"</strong> button</li>
+      <li>Select <strong>"Clear cache and deploy site"</strong></li>
+      <li>Wait for the build to complete (~2-3 minutes)</li>
+      <li>You should see <strong>"Deploy is live!"</strong> 🎉</li>
+    </ol>
+    <p style="margin-top:20px; color:#888; font-size:0.85rem;">If it still fails, copy the FULL build log and share it — I can fix any code issues instantly.</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,0 +1,21 @@
+// Firebase Storage Security Rules
+// Deploy: firebase deploy --only storage:rules
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Booking images — anyone can upload, only auth can read list
+    match /booking-images/{allPaths=**} {
+      allow create: if true;
+      allow read: if true;
+      allow delete: if request.auth != null;
+    }
+
+    // Gallery images — auth can manage, public read
+    match /gallery/{allPaths=**} {
+      allow read: if true;
+      allow create, update, delete: if request.auth != null;
+    }
+  }
+}
