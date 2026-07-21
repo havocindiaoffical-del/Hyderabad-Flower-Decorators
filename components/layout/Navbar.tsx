@@ -48,14 +48,16 @@ export default function Navbar() {
       >
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group flex items-center gap-3">
-            <div className="w-9 h-9 rounded-full border border-gold/40 flex items-center justify-center group-hover:bg-gold group-hover:border-gold transition-all duration-500">
-              <span className="text-gold group-hover:text-ivory text-[10px] font-serif font-semibold transition-colors duration-500">H</span>
-            </div>
-            <div className="hidden sm:block">
-              <span className="label-uppercase text-charcoal">Hyderabad</span>
-              <span className="block label-uppercase text-stone mt-0.5" style={{ fontSize: "0.55rem", letterSpacing: "0.35em" }}>Flower Decorators</span>
-            </div>
+          <Link href="/" className="group flex items-center gap-2.5">
+            <span className="font-serif text-xl sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
+              Hyderabad
+            </span>
+            <span className="font-serif text-xl sm:text-2xl tracking-tight" style={{ fontWeight: 400, color: "#B8935F", fontStyle: "italic" }}>
+              Flower
+            </span>
+            <span className="hidden sm:inline font-serif text-xl sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
+              Decorators
+            </span>
           </Link>
 
           {/* Desktop */}
