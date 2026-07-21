@@ -7,9 +7,23 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getBookingCounts, getRecentBookings, type BookingData } from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 import Link from "next/link";
+
+interface BookingData {
+  id?: string;
+  ticket_id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  event_type: string;
+  event_date: string;
+  preferred_time: string;
+  venue_address: string;
+  status: string;
+  admin_notes?: string;
+  created_at: string;
+}
 
 const statCards = [
   { title: "Upcoming Bookings", value: "0", icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
@@ -26,40 +40,44 @@ export default function AdminDashboard() {
   const [dbReady, setDbReady] = useState<boolean | null>(null);
 
   useEffect(() => {
-    // Fetch data in background — page renders instantly
-    getBookingCounts().then((counts) => {
-      setStats([
-        { title: "Upcoming Bookings", value: String(counts.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-        { title: "Today's Appointments", value: String(counts.today), icon: Clock, color: "text-sage bg-sage/10" },
-        { title: "Completed", value: String(counts.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-        { title: "Cancelled", value: String(counts.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
-        { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-        { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
-      ]);
-      setDbReady(true);
-    }).catch(() => {
-      setDbReady(false);
-    });
-
-    getRecentBookings(5).then(setRecentBookings).catch(() => {
-      setRecentBookings([]);
-    });
+    fetch("/api/admin/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) { setDbReady(false); return; }
+        const c = data.counts;
+        setStats([
+          { title: "Upcoming Bookings", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+          { title: "Today's Appointments", value: String(c.today), icon: Clock, color: "text-sage bg-sage/10" },
+          { title: "Completed", value: String(c.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+          { title: "Cancelled", value: String(c.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
+          { title: "Pending Review", value: String(c.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+          { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
+        ]);
+        setRecentBookings(data.recentBookings || []);
+        setDbReady(true);
+      })
+      .catch(() => setDbReady(false));
   }, []);
 
   const retry = () => {
     setDbReady(null);
-    getBookingCounts().then((counts) => {
-      setStats([
-        { title: "Upcoming Bookings", value: String(counts.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-        { title: "Today's Appointments", value: String(counts.today), icon: Clock, color: "text-sage bg-sage/10" },
-        { title: "Completed", value: String(counts.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-        { title: "Cancelled", value: String(counts.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
-        { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-        { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
-      ]);
-      setDbReady(true);
-    }).catch(() => setDbReady(false));
-    getRecentBookings(5).then(setRecentBookings).catch(() => setRecentBookings([]));
+    fetch("/api/admin/stats")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.error) { setDbReady(false); return; }
+        const c = data.counts;
+        setStats([
+          { title: "Upcoming Bookings", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+          { title: "Today's Appointments", value: String(c.today), icon: Clock, color: "text-sage bg-sage/10" },
+          { title: "Completed", value: String(c.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+          { title: "Cancelled", value: String(c.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
+          { title: "Pending Review", value: String(c.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+          { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
+        ]);
+        setRecentBookings(data.recentBookings || []);
+        setDbReady(true);
+      })
+      .catch(() => setDbReady(false));
   };
 
   return (
@@ -75,7 +93,7 @@ export default function AdminDashboard() {
           <div className="flex items-start gap-4">
             <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">
-              <h3 className="font-heading font-semibold text-charcoal mb-2">Database Connected Successfully</h3>
+              <h3 className="font-heading font-semibold text-charcoal mb-2">Database Connection Issue</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
                 {["Neon Postgres is configured and ready", "Tables created: bookings, gallery, calendar, settings", "Firebase Auth handles admin login", "Firebase Storage handles image uploads", "Bookings are saved to Neon automatically", "Refresh this page"].map((text, i) => (
                   <p key={i} className="text-sm text-charcoal font-body"><span className="text-gold font-bold">{i+1}.</span> {text}</p>
@@ -88,7 +106,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Stats Grid — renders instantly */}
+      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -122,7 +140,7 @@ export default function AdminDashboard() {
           {dbReady === false ? (
             <div className="text-center py-8">
               <AlertCircle className="w-10 h-10 text-border-light mx-auto mb-3" />
-              <p className="text-warm-gray font-body text-sm">No bookings yet — data loads from Neon</p>
+              <p className="text-warm-gray font-body text-sm">No bookings yet — data loads from database</p>
             </div>
           ) : recentBookings.length === 0 ? (
             <div className="text-center py-8">

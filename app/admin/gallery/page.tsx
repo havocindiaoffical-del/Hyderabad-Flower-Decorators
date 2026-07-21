@@ -9,10 +9,15 @@ import { Input } from "@/components/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  getGalleryImages, addGalleryImage, toggleFeatured, deleteGalleryImage, type GalleryImageData,
-} from "@/lib/db-helpers";
-import { uploadGalleryImage, deleteImage } from "@/lib/firebase-storage";
+
+interface GalleryImageData {
+  id?: string;
+  url: string;
+  title: string;
+  category: string;
+  featured: boolean;
+  created_at: string;
+}
 
 const categories = ["Wedding", "Housewarming", "Baby Shower", "Pooja", "Corporate", "Custom"];
 
@@ -22,20 +27,19 @@ export default function AdminGallery() {
   const [isUploading, setIsUploading] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("");
-  const [firebaseReady, setFirebaseReady] = useState(true);
+  const [dbReady, setDbReady] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    fetchGallery();
-  }, []);
+  useEffect(() => { fetchGallery(); }, []);
 
   const fetchGallery = async () => {
     try {
-      const data = await getGalleryImages();
-      setImages(data);
-      setFirebaseReady(true);
+      const res = await fetch("/api/admin/gallery");
+      const data = await res.json();
+      setImages(data.images || []);
+      setDbReady(true);
     } catch {
-      setFirebaseReady(false);
+      setDbReady(false);
       setImages([]);
     } finally {
       setIsLoading(false);
@@ -56,8 +60,12 @@ export default function AdminGallery() {
         if (file.size > 5 * 1024 * 1024) continue;
         if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) continue;
 
-        const url = await uploadGalleryImage(file);
-        await addGalleryImage({ url, title: newTitle, category: newCategory, featured: false });
+        const formData = new FormData();
+        formData.append("title", newTitle);
+        formData.append("category", newCategory);
+        formData.append("file", file);
+
+        await fetch("/api/admin/gallery", { method: "POST", body: formData });
       }
       setNewTitle("");
       setNewCategory("");
@@ -73,22 +81,24 @@ export default function AdminGallery() {
   const handleDelete = async (id: string, url: string) => {
     if (!confirm("Are you sure you want to delete this image?")) return;
     try {
-      await deleteImage(url);
-      await deleteGalleryImage(id);
+      await fetch("/api/admin/gallery", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, url }),
+      });
       fetchGallery();
-    } catch {
-      await deleteGalleryImage(id);
-      fetchGallery();
-    }
+    } catch { fetchGallery(); }
   };
 
   const handleToggleFeatured = async (id: string, featured: boolean) => {
     try {
-      await toggleFeatured(id, featured);
+      await fetch("/api/admin/gallery", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, featured }),
+      });
       fetchGallery();
-    } catch {
-      // Handle error
-    }
+    } catch { /* handle error */ }
   };
 
   if (isLoading) {
@@ -107,7 +117,7 @@ export default function AdminGallery() {
         <p className="text-sm text-warm-gray font-body mt-1">Upload and manage gallery images</p>
       </div>
 
-      {!firebaseReady && (
+      {!dbReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
           <p className="text-sm text-charcoal font-body">Database connection issue. Check your database and Firebase Storage setup.</p>
@@ -144,7 +154,7 @@ export default function AdminGallery() {
       {images.length === 0 ? (
         <div className="text-center py-16">
           <ImageIcon className="w-12 h-12 text-border-light mx-auto mb-4" />
-          <p className="text-warm-gray font-body">{firebaseReady ? "No images uploaded yet" : "Check database connection"}</p>
+          <p className="text-warm-gray font-body">{dbReady ? "No images uploaded yet" : "Check database connection"}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">

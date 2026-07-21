@@ -15,10 +15,28 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  getBookings, updateBookingStatus, type BookingData,
-} from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
+
+interface BookingData {
+  id?: string;
+  ticket_id: string;
+  full_name: string;
+  phone: string;
+  email: string;
+  event_type: string;
+  event_date: string;
+  preferred_time: string;
+  venue_address: string;
+  google_maps_link: string;
+  estimated_budget: string;
+  guest_count: string;
+  special_notes: string;
+  images: string[];
+  status: string;
+  user_uid?: string;
+  admin_notes?: string;
+  created_at: string;
+}
 
 const ITEMS_PER_PAGE = 10;
 
@@ -43,16 +61,12 @@ export default function AdminBookings() {
 
   const fetchBookings = useCallback(async () => {
     try {
-      const result = await getBookings({
-        status: statusFilter,
-        search: searchQuery,
-        page: currentPage,
-        limit: ITEMS_PER_PAGE,
-      });
-      setBookings(result.bookings);
-      setTotalCount(result.total);
+      const params = new URLSearchParams({ status: statusFilter, search: searchQuery, page: String(currentPage) });
+      const res = await fetch(`/api/admin/bookings?${params}`);
+      const data = await res.json();
+      setBookings(data.bookings || []);
+      setTotalCount(data.total || 0);
     } catch {
-      // Firestore may not be set up yet
       setBookings([]);
       setTotalCount(0);
     } finally {
@@ -60,24 +74,22 @@ export default function AdminBookings() {
     }
   }, [statusFilter, searchQuery, currentPage]);
 
-  useEffect(() => {
-    fetchBookings();
-  }, [fetchBookings]);
+  useEffect(() => { fetchBookings(); }, [fetchBookings]);
 
   const handleStatusUpdate = async (bookingId: string, status: string) => {
     setIsUpdating(true);
     try {
-      await updateBookingStatus(bookingId, status, adminNotes);
+      await fetch("/api/admin/bookings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, status, adminNotes }),
+      });
       if (selectedBooking && selectedBooking.id === bookingId) {
-        setSelectedBooking({ ...selectedBooking, status: status as BookingData["status"], admin_notes: adminNotes || selectedBooking.admin_notes });
+        setSelectedBooking({ ...selectedBooking, status, admin_notes: adminNotes || selectedBooking.admin_notes });
       }
       setAdminNotes("");
       fetchBookings();
-    } catch {
-      // Handle error
-    } finally {
-      setIsUpdating(false);
-    }
+    } catch { /* handle error */ } finally { setIsUpdating(false); }
   };
 
   const totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE);
@@ -223,7 +235,7 @@ export default function AdminBookings() {
                 <div className="absolute top-[18px] left-[12%] right-[12%] h-0.5 bg-border-light" />
                 {(["Pending", "Confirmed", "In Progress", "Completed"] as const).map((step, i) => {
                   const keys: string[] = ["pending", "confirmed", "in_progress", "completed"];
-                  const currentIdx = keys.indexOf(selectedBooking.status as string);
+                  const currentIdx = keys.indexOf(selectedBooking.status);
                   const isCancelled = selectedBooking.status === "cancelled";
                   const isActive = !isCancelled && i <= currentIdx;
                   const isCurrent = !isCancelled && i === currentIdx;

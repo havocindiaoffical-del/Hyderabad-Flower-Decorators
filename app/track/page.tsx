@@ -4,8 +4,19 @@ import React, { useState } from "react";
 import { motion } from "framer-motion";
 import { Search, Ticket, CheckCircle2, Clock, AlertCircle, XCircle, Loader2, ArrowRight, Copy, Check } from "lucide-react";
 import { useUserAuth } from "@/components/providers/UserAuth";
-import { getBookingByTicketId, getBookingsByUserUid, getBookingsByPhone, type BookingData } from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
+
+interface BookingData {
+  id?: string;
+  ticket_id: string;
+  full_name: string;
+  event_type: string;
+  event_date: string;
+  preferred_time: string;
+  venue_address: string;
+  status: string;
+  admin_notes?: string;
+}
 
 const statusSteps = ["pending", "confirmed", "in_progress", "completed"];
 
@@ -17,7 +28,6 @@ function StatusTracker({ status }: { status: string }) {
     <div className="flex items-center justify-between relative py-4">
       <div className="absolute top-[22px] left-[12%] right-[12%] h-0.5 bg-border-light" />
       {["Pending", "Confirmed", "In Progress", "Completed"].map((step, i) => {
-        const stepKey = statusSteps[i];
         const isActive = !isCancelled && i <= currentStep;
         const isCurrent = !isCancelled && i === currentStep;
         return (
@@ -29,7 +39,6 @@ function StatusTracker({ status }: { status: string }) {
             }`}>
               {isCancelled ? <XCircle className="w-4 h-4" /> :
                i < currentStep ? <CheckCircle2 className="w-5 h-5" /> :
-               isCurrent ? <span className="text-sm">{i + 1}</span> :
                <span className="text-sm">{i + 1}</span>
               }
             </div>
@@ -90,13 +99,12 @@ function TicketCard({ booking }: { booking: BookingData }) {
 }
 
 export default function TrackPage() {
-  const { user, signInWithGoogle, userName, userEmail, loading: authLoading } = useUserAuth();
+  const { user, signInWithGoogle, loading: authLoading } = useUserAuth();
   const [ticketInput, setTicketInput] = useState("");
   const [searchedBooking, setSearchedBooking] = useState<BookingData | null>(null);
   const [userBookings, setUserBookings] = useState<BookingData[]>([]);
   const [searching, setSearching] = useState(false);
   const [searched, setSearched] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [loadedUserBookings, setLoadedUserBookings] = useState(false);
 
   const searchByTicket = async () => {
@@ -104,8 +112,9 @@ export default function TrackPage() {
     setSearching(true);
     setSearched(true);
     try {
-      const booking = await getBookingByTicketId(ticketInput.trim().toUpperCase());
-      setSearchedBooking(booking);
+      const res = await fetch(`/api/track?ticket=${encodeURIComponent(ticketInput.trim().toUpperCase())}`);
+      const data = await res.json();
+      setSearchedBooking(data.booking || null);
     } catch {
       setSearchedBooking(null);
     } finally {
@@ -117,11 +126,9 @@ export default function TrackPage() {
     if (!user) return;
     setSearching(true);
     try {
-      let bookings = await getBookingsByUserUid(user.uid);
-      if (bookings.length === 0 && user.email) {
-        // Fallback: search by email through phone (if phone not in auth)
-      }
-      setUserBookings(bookings);
+      const res = await fetch(`/api/track?uid=${encodeURIComponent(user.uid)}`);
+      const data = await res.json();
+      setUserBookings(data.bookings || []);
       setLoadedUserBookings(true);
     } catch {
       setUserBookings([]);
@@ -130,17 +137,12 @@ export default function TrackPage() {
     }
   };
 
-  // Load user bookings when user is available
   React.useEffect(() => {
-    if (user && !loadedUserBookings) {
-      loadUserBookings();
-    }
+    if (user && !loadedUserBookings) loadUserBookings();
   }, [user]);
 
   const copyTicketId = (id: string) => {
     navigator.clipboard.writeText(id);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return (
@@ -198,7 +200,7 @@ export default function TrackPage() {
             )}
           </motion.div>
 
-          {/* OR Sign In */}
+          {/* OR */}
           <div className="flex items-center gap-3">
             <div className="flex-1 h-px bg-border-light" />
             <span className="text-xs text-warm-gray font-body">or view all your bookings</span>

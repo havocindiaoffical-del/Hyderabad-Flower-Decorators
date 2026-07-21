@@ -9,11 +9,26 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import {
-  getBookingsForDateRange, getCalendarBlocks, setCalendarBlock,
-  type BookingData, type CalendarBlockData,
-} from "@/lib/db-helpers";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
+
+interface BookingData {
+  id?: string;
+  ticket_id: string;
+  full_name: string;
+  phone: string;
+  event_type: string;
+  event_date: string;
+  preferred_time: string;
+  venue_address: string;
+  status: string;
+}
+
+interface CalendarBlockData {
+  id?: string;
+  date: string;
+  blocked: boolean;
+  reason: string;
+}
 
 interface CalendarDay {
   date: string;
@@ -31,7 +46,7 @@ export default function AdminCalendar() {
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [blockedDates, setBlockedDates] = useState<Record<string, CalendarBlockData>>({});
   const [isLoading, setIsLoading] = useState(true);
-  const [firebaseReady, setFirebaseReady] = useState(true);
+  const [dbReady, setDbReady] = useState(true);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -41,28 +56,24 @@ export default function AdminCalendar() {
       const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
       const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
 
-      const [bookingsData, blocksData] = await Promise.all([
-        getBookingsForDateRange(firstDay, lastDay),
-        getCalendarBlocks(firstDay, lastDay),
-      ]);
+      const res = await fetch(`/api/admin/calendar?start=${firstDay}&end=${lastDay}`);
+      const data = await res.json();
+      if (data.error) { setDbReady(false); generateCalendarDays([], {}); return; }
 
       const blocks: Record<string, CalendarBlockData> = {};
-      blocksData.forEach((b) => { blocks[b.date] = b; });
+      (data.blocks || []).forEach((b: CalendarBlockData) => { blocks[b.date] = b; });
       setBlockedDates(blocks);
-      setFirebaseReady(true);
-
-      generateCalendarDays(bookingsData, blocks);
+      setDbReady(true);
+      generateCalendarDays(data.bookings || [], blocks);
     } catch {
-      setFirebaseReady(false);
+      setDbReady(false);
       generateCalendarDays([], {});
     } finally {
       setIsLoading(false);
     }
   }, [year, month]);
 
-  useEffect(() => {
-    fetchCalendarData();
-  }, [fetchCalendarData]);
+  useEffect(() => { fetchCalendarData(); }, [fetchCalendarData]);
 
   const generateCalendarDays = (bookings: BookingData[], blocks: Record<string, CalendarBlockData>) => {
     const startingDayOfWeek = new Date(year, month, 1).getDay();
@@ -96,11 +107,13 @@ export default function AdminCalendar() {
   const handleToggleBlock = async (date: string) => {
     try {
       const isBlocked = blockedDates[date]?.blocked || false;
-      await setCalendarBlock(date, !isBlocked, "Blocked by admin");
+      await fetch("/api/admin/calendar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ date, blocked: !isBlocked, reason: "Blocked by admin" }),
+      });
       fetchCalendarData();
-    } catch {
-      // Handle error
-    }
+    } catch { /* handle error */ }
   };
 
   const getDayStatus = (day: CalendarDay) => {
@@ -141,10 +154,10 @@ export default function AdminCalendar() {
         <p className="text-sm text-warm-gray font-body mt-1">View and manage booking availability</p>
       </div>
 
-      {!firebaseReady && (
+      {!dbReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Database connection issue. Check your Neon database connection.</p>
+          <p className="text-sm text-charcoal font-body">Database connection issue. Check your database setup.</p>
         </div>
       )}
 

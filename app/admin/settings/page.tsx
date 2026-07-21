@@ -5,10 +5,6 @@ import { Save, Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import {
-  getBusinessSettings, saveBusinessSettings, type BusinessSettingsData,
-} from "@/lib/db-helpers";
 
 interface SettingsForm {
   business_name: string;
@@ -52,25 +48,25 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<SettingsForm>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
-  const [firebaseReady, setFirebaseReady] = useState(true);
+  const [dbReady, setDbReady] = useState(true);
 
-  useEffect(() => {
-    fetchSettings();
-  }, []);
+  useEffect(() => { fetchSettings(); }, []);
 
   const fetchSettings = async () => {
     try {
-      const data = await getBusinessSettings();
-      if (data) {
-        const hours = (data.business_hours || {}) as Record<string, string>;
-        const social = (data.social_links || {}) as Record<string, string>;
+      const res = await fetch("/api/admin/settings");
+      const data = await res.json();
+      if (data.settings) {
+        const s = data.settings;
+        const hours = (s.business_hours || {}) as Record<string, string>;
+        const social = (s.social_links || {}) as Record<string, string>;
         setSettings({
-          business_name: data.business_name || "",
-          phone: data.phone || "",
-          email: data.email || "",
-          whatsapp: data.whatsapp || "",
-          address: data.address || "",
-          brand_color: data.brand_color || "#B8935F",
+          business_name: s.business_name || "",
+          phone: s.phone || "",
+          email: s.email || "",
+          whatsapp: s.whatsapp || "",
+          address: s.address || "",
+          brand_color: s.brand_color || "#B8935F",
           instagram: social.instagram || "",
           facebook: social.facebook || "",
           youtube: social.youtube || "",
@@ -83,9 +79,9 @@ export default function AdminSettings() {
           sunday_hours: hours.sunday || "9:00 AM - 9:00 PM",
         });
       }
-      setFirebaseReady(true);
+      setDbReady(true);
     } catch {
-      setFirebaseReady(false);
+      setDbReady(false);
     } finally {
       setIsLoaded(true);
     }
@@ -98,32 +94,35 @@ export default function AdminSettings() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const data: BusinessSettingsData = {
-        business_name: settings.business_name,
-        phone: settings.phone,
-        email: settings.email,
-        whatsapp: settings.whatsapp,
-        address: settings.address,
-        brand_color: settings.brand_color,
-        business_hours: {
-          monday: settings.monday_hours,
-          tuesday: settings.tuesday_hours,
-          wednesday: settings.wednesday_hours,
-          thursday: settings.thursday_hours,
-          friday: settings.friday_hours,
-          saturday: settings.saturday_hours,
-          sunday: settings.sunday_hours,
-        },
-        social_links: {
-          instagram: settings.instagram,
-          facebook: settings.facebook,
-          youtube: settings.youtube,
-        },
-      };
-      await saveBusinessSettings(data);
+      await fetch("/api/admin/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          business_name: settings.business_name,
+          phone: settings.phone,
+          email: settings.email,
+          whatsapp: settings.whatsapp,
+          address: settings.address,
+          brand_color: settings.brand_color,
+          business_hours: {
+            monday: settings.monday_hours,
+            tuesday: settings.tuesday_hours,
+            wednesday: settings.wednesday_hours,
+            thursday: settings.thursday_hours,
+            friday: settings.friday_hours,
+            saturday: settings.saturday_hours,
+            sunday: settings.sunday_hours,
+          },
+          social_links: {
+            instagram: settings.instagram,
+            facebook: settings.facebook,
+            youtube: settings.youtube,
+          },
+        }),
+      });
       alert("Settings saved successfully!");
     } catch {
-      alert("Failed to save settings. Make sure Firebase Firestore is set up.");
+      alert("Failed to save settings. Check your database connection.");
     } finally {
       setIsSaving(false);
     }
@@ -145,13 +144,13 @@ export default function AdminSettings() {
           <h1 className="text-2xl font-heading font-bold text-charcoal">Settings</h1>
           <p className="text-sm text-warm-gray font-body mt-1">Manage your business information and preferences</p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving || !firebaseReady} variant="default" className="gap-2">
+        <Button onClick={handleSave} disabled={isSaving || !dbReady} variant="default" className="gap-2">
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Changes
         </Button>
       </div>
 
-      {!firebaseReady && (
+      {!dbReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
           <p className="text-sm text-charcoal font-body">Database connection issue. Check your database connection to save settings.</p>

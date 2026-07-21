@@ -19,18 +19,18 @@ export async function GET(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   try {
     const body = await request.json();
-    const { bookingId, status } = body;
+    const { bookingId, status, adminNotes } = body;
 
     if (!bookingId || !status) {
       return NextResponse.json({ error: "Missing bookingId or status" }, { status: 400 });
     }
 
-    const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+    const validStatuses = ["pending", "confirmed", "in_progress", "completed", "cancelled"];
     if (!validStatuses.includes(status)) {
       return NextResponse.json({ error: "Invalid status" }, { status: 400 });
     }
 
-    await updateBookingStatus(bookingId, status);
+    await updateBookingStatus(bookingId, status, adminNotes);
 
     return NextResponse.json({ success: true });
   } catch {
