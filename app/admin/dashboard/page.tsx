@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from "react";
 import {
   CalendarCheck, Clock, CheckCircle2, XCircle,
-  IndianRupee, AlertCircle, ArrowRight, Ticket
+  AlertCircle, ArrowRight, Ticket, Sparkles
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -26,12 +26,12 @@ interface BookingData {
 }
 
 const statCards = [
-  { title: "Upcoming Bookings", value: "0", icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-  { title: "Today's Appointments", value: "0", icon: Clock, color: "text-sage bg-sage/10" },
+  { title: "Upcoming Events", value: "0", icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+  { title: "Today's Events", value: "0", icon: Clock, color: "text-sage bg-sage/10" },
   { title: "Completed", value: "0", icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-  { title: "Cancelled", value: "0", icon: XCircle, color: "text-red-600 bg-red-50" },
   { title: "Pending Review", value: "0", icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-  { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
+  { title: "Cancelled", value: "0", icon: XCircle, color: "text-red-600 bg-red-50" },
+  { title: "Total Events", value: "0", icon: Sparkles, color: "text-gold bg-gold/10" },
 ];
 
 export default function AdminDashboard() {
@@ -39,20 +39,21 @@ export default function AdminDashboard() {
   const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
   const [dbReady, setDbReady] = useState<boolean | null>(null);
 
+  const buildStats = (c: { upcoming: number; today: number; completed: number; cancelled: number; pending: number }) => [
+    { title: "Upcoming Events", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+    { title: "Today's Events", value: String(c.today), icon: Clock, color: "text-sage bg-sage/10" },
+    { title: "Completed", value: String(c.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+    { title: "Pending Review", value: String(c.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+    { title: "Cancelled", value: String(c.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
+    { title: "Total Events", value: String(c.upcoming + c.today + c.completed + c.pending + c.cancelled), icon: Sparkles, color: "text-gold bg-gold/10" },
+  ];
+
   useEffect(() => {
     fetch("/api/admin/stats")
       .then((r) => r.json())
       .then((data) => {
         if (data.error) { setDbReady(false); return; }
-        const c = data.counts;
-        setStats([
-          { title: "Upcoming Bookings", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-          { title: "Today's Appointments", value: String(c.today), icon: Clock, color: "text-sage bg-sage/10" },
-          { title: "Completed", value: String(c.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-          { title: "Cancelled", value: String(c.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
-          { title: "Pending Review", value: String(c.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-          { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
-        ]);
+        setStats(buildStats(data.counts));
         setRecentBookings(data.recentBookings || []);
         setDbReady(true);
       })
@@ -65,15 +66,7 @@ export default function AdminDashboard() {
       .then((r) => r.json())
       .then((data) => {
         if (data.error) { setDbReady(false); return; }
-        const c = data.counts;
-        setStats([
-          { title: "Upcoming Bookings", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-          { title: "Today's Appointments", value: String(c.today), icon: Clock, color: "text-sage bg-sage/10" },
-          { title: "Completed", value: String(c.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-          { title: "Cancelled", value: String(c.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
-          { title: "Pending Review", value: String(c.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-          { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
-        ]);
+        setStats(buildStats(data.counts));
         setRecentBookings(data.recentBookings || []);
         setDbReady(true);
       })
@@ -87,26 +80,19 @@ export default function AdminDashboard() {
         <p className="text-sm text-warm-gray font-body mt-1">Welcome back! Here&apos;s an overview of your bookings.</p>
       </div>
 
-      {/* Database Status Banner */}
       {dbReady === false && (
         <div className="mb-8 bg-white rounded-2xl border-2 border-gold/30 p-6">
           <div className="flex items-start gap-4">
             <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">
               <h3 className="font-heading font-semibold text-charcoal mb-2">Database Connection Issue</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
-                {["Neon Postgres is configured and ready", "Tables created: bookings, gallery, calendar, settings", "Firebase Auth handles admin login", "Firebase Storage handles image uploads", "Bookings are saved to Neon automatically", "Refresh this page"].map((text, i) => (
-                  <p key={i} className="text-sm text-charcoal font-body"><span className="text-gold font-bold">{i+1}.</span> {text}</p>
-                ))}
-              </div>
-              <a href="https://console.neon.tech" target="_blank" rel="noopener noreferrer" className="inline-flex items-center bg-gold text-charcoal px-5 py-2 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">Open Neon Console →</a>
+              <p className="text-sm text-charcoal font-body mb-4">Check your DATABASE_URL environment variable in Netlify.</p>
               <button onClick={retry} className="inline-flex items-center bg-charcoal text-ivory px-5 py-2 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">Retry</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {stats.map((stat) => {
           const Icon = stat.icon;
@@ -128,7 +114,6 @@ export default function AdminDashboard() {
         })}
       </div>
 
-      {/* Recent Bookings */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Bookings</CardTitle>
@@ -140,7 +125,7 @@ export default function AdminDashboard() {
           {dbReady === false ? (
             <div className="text-center py-8">
               <AlertCircle className="w-10 h-10 text-border-light mx-auto mb-3" />
-              <p className="text-warm-gray font-body text-sm">No bookings yet — data loads from database</p>
+              <p className="text-warm-gray font-body text-sm">Database not connected</p>
             </div>
           ) : recentBookings.length === 0 ? (
             <div className="text-center py-8">

@@ -1,25 +1,44 @@
 "use client";
 
-import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Mail, Lock, Eye, EyeOff } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Mail, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
+// ─── ADMIN EMAIL WHITELIST (must match layout) ────────────────────
+const ADMIN_EMAILS = [
+  "info@hydflowerdecorators.com",
+  "hydflowerdecorators@gmail.com",
+];
+
 export default function AdminLoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    if (searchParams.get("error") === "unauthorized") {
+      setError("Access denied. This account is not authorized for admin access.");
+    }
+  }, [searchParams]);
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(auth, email, password);
+      const loggedInEmail = result.user.email?.toLowerCase() || "";
+      if (!ADMIN_EMAILS.includes(loggedInEmail)) {
+        await auth.signOut();
+        setError("Access denied. This account is not authorized for admin access.");
+        return;
+      }
       router.push("/admin/dashboard");
     } catch {
       setError("Invalid credentials. Please check your email and password.");
@@ -32,7 +51,13 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const result = await signInWithPopup(auth, googleProvider);
+      const loggedInEmail = result.user.email?.toLowerCase() || "";
+      if (!ADMIN_EMAILS.includes(loggedInEmail)) {
+        await auth.signOut();
+        setError("Access denied. This Google account is not authorized for admin access.");
+        return;
+      }
       router.push("/admin/dashboard");
     } catch {
       setError("Google sign-in failed. Please try again.");
@@ -53,7 +78,10 @@ export default function AdminLoginPage() {
         </div>
         <div className="bg-white border border-border-light rounded-2xl p-8 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)]">
           {error && (
-            <div className="mb-6 p-3 rounded-lg bg-red-50 text-red-600 text-xs font-body">{error}</div>
+            <div className="mb-6 p-3 rounded-lg bg-red-50 border border-red-100 flex items-start gap-2">
+              <ShieldAlert className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+              <span className="text-red-600 text-xs font-body">{error}</span>
+            </div>
           )}
 
           {/* Google Sign In */}
@@ -129,7 +157,7 @@ export default function AdminLoginPage() {
           </form>
         </div>
         <p className="mt-6 text-center text-xs text-warm-gray font-body">
-          Firebase Authentication · Secured
+          Authorized admin access only
         </p>
       </div>
     </div>

@@ -8,6 +8,14 @@ import { onAuthStateChanged, signOut, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
+// ─── ADMIN EMAIL WHITELIST ─────────────────────────────────────────
+// Only these emails can access the admin panel. Add more as needed.
+const ADMIN_EMAILS = [
+  "info@hydflowerdecorators.com",
+  "hydflowerdecorators@gmail.com",
+  // Add more admin emails here
+];
+
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/bookings", label: "Bookings", icon: BookOpen },
@@ -21,6 +29,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isLoginPage = pathname === "/admin/login";
@@ -29,7 +38,21 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setAuthChecked(true);
-      if (!firebaseUser && !isLoginPage) router.push("/admin/login");
+
+      if (firebaseUser) {
+        const email = firebaseUser.email?.toLowerCase() || "";
+        const authorized = ADMIN_EMAILS.includes(email);
+        setIsAuthorized(authorized);
+
+        if (!authorized && !isLoginPage) {
+          // Not authorized — sign out and redirect
+          signOut(auth);
+          router.push("/admin/login?error=unauthorized");
+        }
+      } else {
+        setIsAuthorized(false);
+        if (!isLoginPage) router.push("/admin/login");
+      }
     });
     return () => unsubscribe();
   }, [router, isLoginPage]);
@@ -41,13 +64,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isLoginPage) return <>{children}</>;
 
-  // Show page immediately once auth is resolved
   if (!authChecked) return (
     <div className="min-h-screen bg-ivory flex items-center justify-center">
       <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
     </div>
   );
-  if (!user) return null;
+
+  if (!user || !isAuthorized) return null;
 
   return (
     <div className="min-h-screen bg-ivory flex">
