@@ -1,5 +1,5 @@
 import { eq, and, gte, lte, ne, desc, sql, like, or } from "drizzle-orm";
-import { db } from "./db";
+import { getDb } from "./db";
 import { bookings, galleryImages, calendarBlocks, businessSettings } from "./schema";
 
 // ─── Types (kept compatible with old firestore-helpers) ───────────
@@ -73,7 +73,7 @@ export async function createBooking(
 ): Promise<{ id: string; ticket_id: string }> {
   const ticket_id = generateTicketId();
 
-  const result = await db.insert(bookings).values({
+  const result = await getDb().insert(bookings).values({
     ticketId: ticket_id,
     fullName: data.full_name,
     phone: data.phone,
@@ -95,24 +95,24 @@ export async function createBooking(
 }
 
 export async function getBooking(id: string): Promise<BookingData | null> {
-  const result = await db.select().from(bookings).where(eq(bookings.id, Number(id))).limit(1);
+  const result = await getDb().select().from(bookings).where(eq(bookings.id, Number(id))).limit(1);
   if (result.length === 0) return null;
   return rowToBooking(result[0]);
 }
 
 export async function getBookingByTicketId(ticketId: string): Promise<BookingData | null> {
-  const result = await db.select().from(bookings).where(eq(bookings.ticketId, ticketId)).limit(1);
+  const result = await getDb().select().from(bookings).where(eq(bookings.ticketId, ticketId)).limit(1);
   if (result.length === 0) return null;
   return rowToBooking(result[0]);
 }
 
 export async function getBookingsByUserUid(uid: string): Promise<BookingData[]> {
-  const result = await db.select().from(bookings).where(eq(bookings.userUid, uid)).orderBy(desc(bookings.createdAt));
+  const result = await getDb().select().from(bookings).where(eq(bookings.userUid, uid)).orderBy(desc(bookings.createdAt));
   return result.map(rowToBooking);
 }
 
 export async function getBookingsByPhone(phone: string): Promise<BookingData[]> {
-  const result = await db.select().from(bookings).where(eq(bookings.phone, phone)).orderBy(desc(bookings.createdAt));
+  const result = await getDb().select().from(bookings).where(eq(bookings.phone, phone)).orderBy(desc(bookings.createdAt));
   return result.map(rowToBooking);
 }
 
@@ -146,8 +146,8 @@ export async function getBookings(opts?: {
   const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
 
   const [countResult, rows] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(whereClause),
-    db.select().from(bookings).where(whereClause).orderBy(desc(bookings.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(whereClause),
+    getDb().select().from(bookings).where(whereClause).orderBy(desc(bookings.createdAt)).limit(pageSize).offset((page - 1) * pageSize),
   ]);
 
   const total = Number(countResult[0]?.count || 0);
@@ -155,7 +155,7 @@ export async function getBookings(opts?: {
 }
 
 export async function getRecentBookings(count: number): Promise<BookingData[]> {
-  const result = await db.select().from(bookings).orderBy(desc(bookings.createdAt)).limit(count);
+  const result = await getDb().select().from(bookings).orderBy(desc(bookings.createdAt)).limit(count);
   return result.map(rowToBooking);
 }
 
@@ -168,7 +168,7 @@ export async function updateBookingStatus(id: string, status: string, adminNotes
     updateData.adminNotes = adminNotes;
   }
 
-  await db.update(bookings).set(updateData).where(eq(bookings.id, Number(id)));
+  await getDb().update(bookings).set(updateData).where(eq(bookings.id, Number(id)));
 }
 
 export async function getBookingCounts(): Promise<{
@@ -181,15 +181,15 @@ export async function getBookingCounts(): Promise<{
   const todayStr = new Date().toISOString().split("T")[0];
 
   const [upcoming, todayCount, completed, cancelled, pending] = await Promise.all([
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(
       and(gte(bookings.eventDate, todayStr), ne(bookings.status, "cancelled"))
     ),
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(
       and(eq(bookings.eventDate, todayStr), ne(bookings.status, "cancelled"))
     ),
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "completed")),
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "cancelled")),
-    db.select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "pending")),
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "completed")),
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "cancelled")),
+    getDb().select({ count: sql<number>`count(*)` }).from(bookings).where(eq(bookings.status, "pending")),
   ]);
 
   return {
@@ -202,7 +202,7 @@ export async function getBookingCounts(): Promise<{
 }
 
 export async function getBookingsForDateRange(startDate: string, endDate: string): Promise<BookingData[]> {
-  const result = await db.select().from(bookings).where(
+  const result = await getDb().select().from(bookings).where(
     and(gte(bookings.eventDate, startDate), lte(bookings.eventDate, endDate))
   );
   return result.map(rowToBooking);
@@ -211,7 +211,7 @@ export async function getBookingsForDateRange(startDate: string, endDate: string
 // ─── Gallery Helpers ──────────────────────────────────────────────
 
 export async function addGalleryImage(data: Omit<GalleryImageData, "id" | "created_at">): Promise<string> {
-  const result = await db.insert(galleryImages).values({
+  const result = await getDb().insert(galleryImages).values({
     url: data.url,
     title: data.title,
     category: data.category,
@@ -221,7 +221,7 @@ export async function addGalleryImage(data: Omit<GalleryImageData, "id" | "creat
 }
 
 export async function getGalleryImages(): Promise<GalleryImageData[]> {
-  const result = await db.select().from(galleryImages).orderBy(desc(galleryImages.createdAt));
+  const result = await getDb().select().from(galleryImages).orderBy(desc(galleryImages.createdAt));
   return result.map((r) => ({
     id: String(r.id),
     url: r.url,
@@ -233,17 +233,17 @@ export async function getGalleryImages(): Promise<GalleryImageData[]> {
 }
 
 export async function toggleFeatured(id: string, current: boolean): Promise<void> {
-  await db.update(galleryImages).set({ featured: !current }).where(eq(galleryImages.id, Number(id)));
+  await getDb().update(galleryImages).set({ featured: !current }).where(eq(galleryImages.id, Number(id)));
 }
 
 export async function deleteGalleryImage(id: string): Promise<void> {
-  await db.delete(galleryImages).where(eq(galleryImages.id, Number(id)));
+  await getDb().delete(galleryImages).where(eq(galleryImages.id, Number(id)));
 }
 
 // ─── Calendar Block Helpers ───────────────────────────────────────
 
 export async function getCalendarBlocks(startDate: string, endDate: string): Promise<CalendarBlockData[]> {
-  const result = await db.select().from(calendarBlocks).where(
+  const result = await getDb().select().from(calendarBlocks).where(
     and(gte(calendarBlocks.date, startDate), lte(calendarBlocks.date, endDate))
   );
   return result.map((r) => ({
@@ -255,23 +255,23 @@ export async function getCalendarBlocks(startDate: string, endDate: string): Pro
 }
 
 export async function setCalendarBlock(date: string, blocked: boolean, reason: string): Promise<void> {
-  const existing = await db.select().from(calendarBlocks).where(eq(calendarBlocks.date, date)).limit(1);
+  const existing = await getDb().select().from(calendarBlocks).where(eq(calendarBlocks.date, date)).limit(1);
 
   if (existing.length > 0) {
     if (blocked) {
-      await db.update(calendarBlocks).set({ blocked, reason }).where(eq(calendarBlocks.date, date));
+      await getDb().update(calendarBlocks).set({ blocked, reason }).where(eq(calendarBlocks.date, date));
     } else {
-      await db.delete(calendarBlocks).where(eq(calendarBlocks.date, date));
+      await getDb().delete(calendarBlocks).where(eq(calendarBlocks.date, date));
     }
   } else if (blocked) {
-    await db.insert(calendarBlocks).values({ date, blocked, reason });
+    await getDb().insert(calendarBlocks).values({ date, blocked, reason });
   }
 }
 
 // ─── Business Settings Helpers ────────────────────────────────────
 
 export async function getBusinessSettings(): Promise<BusinessSettingsData | null> {
-  const result = await db.select().from(businessSettings).limit(1);
+  const result = await getDb().select().from(businessSettings).limit(1);
   if (result.length === 0) return null;
 
   const r = result[0];
@@ -302,12 +302,12 @@ export async function saveBusinessSettings(data: BusinessSettingsData): Promise<
     updatedAt: new Date(),
   };
 
-  const existing = await db.select({ id: businessSettings.id }).from(businessSettings).limit(1);
+  const existing = await getDb().select({ id: businessSettings.id }).from(businessSettings).limit(1);
 
   if (existing.length > 0) {
-    await db.update(businessSettings).set(payload).where(eq(businessSettings.id, existing[0].id));
+    await getDb().update(businessSettings).set(payload).where(eq(businessSettings.id, existing[0].id));
   } else {
-    await db.insert(businessSettings).values(payload);
+    await getDb().insert(businessSettings).values(payload);
   }
 }
 

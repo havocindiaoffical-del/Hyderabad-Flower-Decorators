@@ -1,14 +1,27 @@
-import { drizzle } from "drizzle-orm/postgres-js";
+import { drizzle, type PostgresJsDatabase } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL!;
+let _db: PostgresJsDatabase<typeof schema> | null = null;
+let _client: ReturnType<typeof postgres> | null = null;
 
-const client = postgres(connectionString, {
-  ssl: "require",
-  max: 5,
-  idle_timeout: 20,
-  connect_timeout: 10,
-});
+export function getDb(): PostgresJsDatabase<typeof schema> {
+  if (_db) return _db;
 
-export const db = drizzle(client, { schema });
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error("DATABASE_URL environment variable is not set");
+  }
+
+  const isCockroachDB = connectionString.includes("cockroachlabs.cloud");
+
+  _client = postgres(connectionString, {
+    ssl: isCockroachDB ? { rejectUnauthorized: false } : "require",
+    max: 5,
+    idle_timeout: 20,
+    connect_timeout: 10,
+  });
+
+  _db = drizzle(_client, { schema });
+  return _db;
+}
