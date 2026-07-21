@@ -10,6 +10,7 @@ import { auth, googleProvider } from "@/lib/firebase";
 const ADMIN_EMAILS = [
   "info@hydflowerdecorators.com",
   "hydflowerdecorators@gmail.com",
+  "nanid9404@gmail.com",
 ];
 
 export default function AdminLoginPage() {

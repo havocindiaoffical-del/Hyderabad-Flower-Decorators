@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 const ADMIN_EMAILS = [
   "info@hydflowerdecorators.com",
   "hydflowerdecorators@gmail.com",
-  // Add more admin emails here
+  "nanid9404@gmail.com",
 ];
 
 const navItems = [
