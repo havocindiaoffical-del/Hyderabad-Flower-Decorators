@@ -2,8 +2,7 @@ import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL ||
-  "postgresql://havocindiaoffical_gm:PwPqgFVGyeCSUsfMPfACSQ@lilac-tuna-29930.j77.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=require&options=--cluster=lilac-tuna-29930";
+const connectionString = process.env.DATABASE_URL!;
 
 const client = postgres(connectionString, {
   ssl: "require",
