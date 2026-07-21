@@ -1,20 +1,21 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { LayoutDashboard, Calendar, Image, Settings, LogOut, Menu, X, BookOpen } from "lucide-react";
-import { onAuthStateChanged, signOut, type User } from "firebase/auth";
+import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
 
 // ─── ADMIN EMAIL WHITELIST ─────────────────────────────────────────
-// Only these emails can access the admin panel. Add more as needed.
 const ADMIN_EMAILS = [
   "info@hydflowerdecorators.com",
   "hydflowerdecorators@gmail.com",
   "nanid9404@gmail.com",
 ];
+
+const SESSION_KEY = "hfd_admin_email";
 
 const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -32,44 +33,83 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  // Use refs so we never re-subscribe onAuthStateChanged due to value changes
+  const pathnameRef = useRef(pathname);
+  const routerRef = useRef(router);
+  pathnameRef.current = pathname;
+  routerRef.current = router;
+
   const isLoginPage = pathname === "/admin/login";
 
+  const handleLogout = useCallback(async () => {
+    try {
+      await signOut(auth);
+    } catch {
+      // ignore
+    }
+    sessionStorage.removeItem(SESSION_KEY);
+    routerRef.current.push("/admin/login");
+  }, []);
+
+  // ─── Firebase Auth listener (runs ONCE, never re-subscribes) ───────
   useEffect(() => {
+    // Ensure Firebase Auth persists across page loads
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+
+    let mounted = true;
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (!mounted) return;
+
       setUser(firebaseUser);
-      setAuthChecked(true);
 
       if (firebaseUser) {
         const email = firebaseUser.email?.toLowerCase() || "";
         const authorized = ADMIN_EMAILS.includes(email);
         setIsAuthorized(authorized);
 
-        if (!authorized && !isLoginPage) {
-          // Not authorized — sign out and redirect
-          signOut(auth);
-          router.push("/admin/login?error=unauthorized");
+        if (authorized) {
+          // Persist admin email in session storage as backup
+          try { sessionStorage.setItem(SESSION_KEY, email); } catch {}
+        } else {
+          try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+          // Not authorized — sign out and redirect (unless on login page)
+          signOut(auth).catch(() => {});
+          if (pathnameRef.current !== "/admin/login") {
+            routerRef.current.replace("/admin/login?error=unauthorized");
+          }
         }
       } else {
         setIsAuthorized(false);
-        if (!isLoginPage) router.push("/admin/login");
+        try { sessionStorage.removeItem(SESSION_KEY); } catch {}
+        // Only redirect if NOT on the login page
+        if (pathnameRef.current !== "/admin/login") {
+          routerRef.current.replace("/admin/login");
+        }
       }
+
+      setAuthChecked(true);
     });
-    return () => unsubscribe();
-  }, [router, isLoginPage]);
 
-  const logout = async () => {
-    await signOut(auth);
-    router.push("/admin/login");
-  };
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []); // ← EMPTY dependency array — never re-subscribes
 
+  // ─── Login page: no layout chrome ─────────────────────────────────
   if (isLoginPage) return <>{children}</>;
 
-  if (!authChecked) return (
-    <div className="min-h-screen bg-ivory flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-    </div>
-  );
+  // ─── Waiting for Firebase Auth to finish initial check ────────────
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-ivory flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
+  // ─── Not authenticated ─────────────────────────────────────────────
   if (!user || !isAuthorized) return null;
 
   return (
@@ -95,7 +135,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </nav>
         <div className="px-3 py-4 border-t border-border-light">
           <p className="px-3 py-1 text-[10px] text-warm-gray font-body truncate">{user.email}</p>
-          <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] text-red-500 hover:bg-red-50 w-full font-body transition-colors mt-1">
+          <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] text-red-500 hover:bg-red-50 w-full font-body transition-colors mt-1">
             <LogOut className="w-4 h-4" />Logout
           </button>
         </div>
@@ -123,6 +163,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 );
               })}
             </nav>
+            <div className="px-3 py-4 border-t border-border-light">
+              <p className="px-3 py-1 text-[10px] text-warm-gray font-body truncate">{user.email}</p>
+              <button onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] text-red-500 hover:bg-red-50 w-full font-body transition-colors mt-1">
+                <LogOut className="w-4 h-4" />Logout
+              </button>
+            </div>
           </div>
         </div>
       )}

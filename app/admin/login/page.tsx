@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
-import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, setPersistence, browserLocalPersistence } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
 // ─── ADMIN EMAIL WHITELIST (must match layout) ────────────────────
@@ -33,6 +33,8 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
+      // Ensure persistence is set before signing in
+      await setPersistence(auth, browserLocalPersistence);
       const result = await signInWithEmailAndPassword(auth, email, password);
       const loggedInEmail = result.user.email?.toLowerCase() || "";
       if (!ADMIN_EMAILS.includes(loggedInEmail)) {
@@ -40,7 +42,8 @@ export default function AdminLoginPage() {
         setError("Access denied. This account is not authorized for admin access.");
         return;
       }
-      router.push("/admin/dashboard");
+      // Use replace to avoid back-button loops; short delay for layout to pick up auth state
+      setTimeout(() => router.replace("/admin/dashboard"), 200);
     } catch {
       setError("Invalid credentials. Please check your email and password.");
     } finally {
@@ -52,6 +55,7 @@ export default function AdminLoginPage() {
     setError("");
     setLoading(true);
     try {
+      await setPersistence(auth, browserLocalPersistence);
       const result = await signInWithPopup(auth, googleProvider);
       const loggedInEmail = result.user.email?.toLowerCase() || "";
       if (!ADMIN_EMAILS.includes(loggedInEmail)) {
@@ -59,7 +63,7 @@ export default function AdminLoginPage() {
         setError("Access denied. This Google account is not authorized for admin access.");
         return;
       }
-      router.push("/admin/dashboard");
+      setTimeout(() => router.replace("/admin/dashboard"), 200);
     } catch {
       setError("Google sign-in failed. Please try again.");
     } finally {

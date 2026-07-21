@@ -5,6 +5,8 @@ import {
   onAuthStateChanged,
   signInWithPopup,
   signOut,
+  setPersistence,
+  browserLocalPersistence,
   type User,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
@@ -34,6 +36,9 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Ensure Firebase Auth persists across page loads
+    setPersistence(auth, browserLocalPersistence).catch(() => {});
+
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
@@ -43,8 +48,9 @@ export function UserAuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = async () => {
     try {
+      await setPersistence(auth, browserLocalPersistence);
       await signInWithPopup(auth, googleProvider);
-    } catch (err) {
+    } catch {
       // User closed popup or error
     }
   };

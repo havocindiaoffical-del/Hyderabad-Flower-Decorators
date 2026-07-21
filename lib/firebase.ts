@@ -1,6 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getAuth, GoogleAuthProvider } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
+import { getAuth, browserLocalPersistence, GoogleAuthProvider } from "firebase/auth";
 import { getStorage } from "firebase/storage";
 
 const firebaseConfig = {
@@ -15,8 +14,12 @@ const firebaseConfig = {
 
 const app = getApps().length ? getApp() : initializeApp(firebaseConfig);
 
+// Initialize Auth and set persistence IMMEDIATELY so sessions survive page refreshes
 export const auth = getAuth(app);
-export const db = getFirestore(app);
+// Set persistence right away — resolves quickly; any subsequent
+// onAuthStateChanged calls will already use the correct persistence layer.
+auth.setPersistence(browserLocalPersistence).catch(() => {});
+
 export const storage = getStorage(app);
 export const googleProvider = new GoogleAuthProvider();
 
