@@ -14,9 +14,14 @@ export function getDb(): PostgresJsDatabase<typeof schema> {
   }
 
   const isCockroachDB = connectionString.includes("cockroachlabs.cloud");
+  const isNeon = connectionString.includes("neon.tech");
 
   _client = postgres(connectionString, {
-    ssl: isCockroachDB ? { rejectUnauthorized: false } : "require",
+    ssl: isCockroachDB
+      ? { rejectUnauthorized: false }
+      : isNeon
+        ? "require"
+        : "require",
     max: 5,
     idle_timeout: 20,
     connect_timeout: 10,
