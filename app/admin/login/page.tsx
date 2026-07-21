@@ -2,7 +2,6 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
 import { Mail, Lock, Eye, EyeOff } from "lucide-react";
 import { signInWithEmailAndPassword, signInWithPopup } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
@@ -44,7 +43,7 @@ export default function AdminLoginPage() {
 
   return (
     <div className="min-h-screen bg-ivory flex items-center justify-center px-4">
-      <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm">
+      <div className="w-full max-w-sm animate-[fadeIn_0.4s_ease]">
         <div className="text-center mb-12">
           <div className="w-10 h-10 border border-gold rounded-full flex items-center justify-center mx-auto mb-4">
             <span className="text-gold text-sm font-serif">H</span>
@@ -132,7 +131,7 @@ export default function AdminLoginPage() {
         <p className="mt-6 text-center text-xs text-warm-gray font-body">
           Firebase Authentication · Secured
         </p>
-      </motion.div>
+      </div>
     </div>
   );
 }

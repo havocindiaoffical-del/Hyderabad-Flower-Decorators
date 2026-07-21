@@ -1,84 +1,80 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-import { motion } from "framer-motion";
+import React, { useEffect, useRef } from "react";
 
 export default function CustomCursor() {
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [isHovering, setIsHovering] = useState(false);
-  const [isVisible, setIsVisible] = useState(false);
+  const outerRef = useRef<HTMLDivElement>(null);
+  const innerRef = useRef<HTMLDivElement>(null);
+  const isTouch = useRef(false);
 
   useEffect(() => {
-    // Only show on desktop
-    if (window.matchMedia("(pointer: coarse)").matches) return;
+    if (window.matchMedia("(pointer: coarse)").matches) {
+      isTouch.current = true;
+      return;
+    }
+
+    let mx = 0, my = 0;
+    let ox = 0, oy = 0;
+    let hovering = false;
 
     const move = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
-      setIsVisible(true);
+      mx = e.clientX;
+      my = e.clientY;
     };
 
-    const handleMouseOver = (e: MouseEvent) => {
+    const handleOver = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
-      if (target.closest("a, button, [role='button'], input, select, textarea, [data-cursor]")) {
-        setIsHovering(true);
+      if (target.closest("a, button, [role='button'], input, select, textarea")) {
+        hovering = true;
       }
     };
 
-    const handleMouseOut = () => {
-      setIsHovering(false);
-    };
+    const handleOut = () => { hovering = false; };
 
-    const handleLeave = () => {
-      setIsVisible(false);
-    };
+    // Lightweight animation loop using direct style manipulation
+    let rafId: number;
+    const animate = () => {
+      // Smooth follow with lerp
+      ox += (mx - ox) * 0.15;
+      oy += (my - oy) * 0.15;
 
-    window.addEventListener("mousemove", move);
-    window.addEventListener("mouseover", handleMouseOver);
-    window.addEventListener("mouseout", handleMouseOut);
-    document.addEventListener("mouseleave", handleLeave);
+      if (outerRef.current) {
+        outerRef.current.style.transform = `translate(${ox - 16}px, ${oy - 16}px) scale(${hovering ? 1.6 : 1})`;
+        outerRef.current.style.opacity = mx ? '1' : '0';
+      }
+      if (innerRef.current) {
+        innerRef.current.style.transform = `translate(${mx - 3}px, ${my - 3}px)`;
+        innerRef.current.style.opacity = mx ? '1' : '0';
+      }
+      rafId = requestAnimationFrame(animate);
+    };
+    rafId = requestAnimationFrame(animate);
+
+    window.addEventListener("mousemove", move, { passive: true });
+    window.addEventListener("mouseover", handleOver, { passive: true });
+    window.addEventListener("mouseout", handleOut, { passive: true });
 
     return () => {
+      cancelAnimationFrame(rafId);
       window.removeEventListener("mousemove", move);
-      window.removeEventListener("mouseover", handleMouseOver);
-      window.removeEventListener("mouseout", handleMouseOut);
-      document.removeEventListener("mouseleave", handleLeave);
+      window.removeEventListener("mouseover", handleOver);
+      window.removeEventListener("mouseout", handleOut);
     };
   }, []);
 
-  if (typeof window !== "undefined" && window.matchMedia("(pointer: coarse)").matches) return null;
+  if (typeof window !== "undefined" && isTouch.current) return null;
 
   return (
     <>
-      {/* Outer ring */}
-      <motion.div
-        className="fixed top-0 left-0 w-8 h-8 rounded-full border border-gold/30 pointer-events-none z-[9999] mix-blend-difference"
-        animate={{
-          x: position.x - 16,
-          y: position.y - 16,
-          scale: isHovering ? 1.8 : 1,
-          opacity: isVisible ? 1 : 0,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 150,
-          damping: 15,
-          mass: 0.5,
-        }}
+      <div
+        ref={outerRef}
+        className="fixed top-0 left-0 w-8 h-8 rounded-full border border-gold/30 pointer-events-none z-[9999] mix-blend-difference opacity-0"
+        style={{ willChange: 'transform' }}
       />
-      {/* Inner dot */}
-      <motion.div
-        className="fixed top-0 left-0 w-1.5 h-1.5 rounded-full bg-gold pointer-events-none z-[9999]"
-        animate={{
-          x: position.x - 3,
-          y: position.y - 3,
-          opacity: isVisible ? 1 : 0,
-        }}
-        transition={{
-          type: "spring",
-          stiffness: 500,
-          damping: 28,
-          mass: 0.3,
-        }}
+      <div
+        ref={innerRef}
+        className="fixed top-0 left-0 w-1.5 h-1.5 rounded-full bg-gold pointer-events-none z-[9999] opacity-0"
+        style={{ willChange: 'transform' }}
       />
     </>
   );

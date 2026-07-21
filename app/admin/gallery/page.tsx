@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { motion } from "framer-motion";
+
 import { Trash2, Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -149,7 +149,7 @@ export default function AdminGallery() {
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {images.map((image) => (
-            <motion.div key={image.id} layout initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="group relative">
+            <div key={image.id} className="group relative">
               <div className="aspect-square rounded-xl bg-cream overflow-hidden relative">
                 <img src={image.url} alt={image.title} className="w-full h-full object-cover" loading="lazy" />
                 <div className="absolute inset-0 bg-charcoal/0 group-hover:bg-charcoal/40 transition-colors duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100">
@@ -169,7 +169,7 @@ export default function AdminGallery() {
               </div>
               <p className="mt-2 text-xs font-body text-charcoal font-medium truncate">{image.title}</p>
               <p className="text-xs font-body text-warm-gray">{image.category}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
       )}

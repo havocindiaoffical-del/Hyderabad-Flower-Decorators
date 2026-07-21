@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback } from "react";
-import { motion } from "framer-motion";
+
 import {
   Search, CheckCircle2, XCircle, Clock, Loader2,
   ChevronLeft, ChevronRight, Phone, Mail, MapPin, Ticket

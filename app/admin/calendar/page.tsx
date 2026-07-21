@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { motion } from "framer-motion";
+
 import { ChevronLeft, ChevronRight, Lock, Unlock, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -185,7 +185,7 @@ export default function AdminCalendar() {
             {calendarDays.map((day, index) => {
               const status = day.isCurrentMonth ? getDayStatus(day) : "default";
               return (
-                <motion.button
+                <button
                   key={index}
                   onClick={() => day.isCurrentMonth && setSelectedDay(day)}
                   disabled={!day.isCurrentMonth}
@@ -208,7 +208,7 @@ export default function AdminCalendar() {
                     </div>
                   )}
                   {day.blocked && <Lock className="w-3 h-3 text-red-400 absolute top-1 right-1" />}
-                </motion.button>
+                </button>
               );
             })}
           </div>

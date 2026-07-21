@@ -26,6 +26,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const isLoginPage = pathname === "/admin/login";
 
   useEffect(() => {
+    // Fast auth check — Firebase caches auth state
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
@@ -44,7 +45,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (loading) return (
     <div className="min-h-screen bg-ivory flex items-center justify-center">
-      <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+      <div className="text-center">
+        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+        <p className="text-xs text-warm-gray font-body">Loading...</p>
+      </div>
     </div>
   );
   if (!user) return null;
@@ -52,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   return (
     <div className="min-h-screen bg-ivory flex">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-60 lg:fixed lg:inset-y-0 bg-white border-r border-border-light">
+      <aside className="hidden lg:flex lg:flex-col lg:w-56 lg:fixed lg:inset-y-0 bg-white border-r border-border-light">
         <div className="flex items-center gap-2.5 px-5 h-14 border-b border-border-light">
           <div className="w-7 h-7 border border-gold rounded-full flex items-center justify-center">
             <span className="text-gold text-[10px] font-serif font-semibold">H</span>
@@ -103,7 +107,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
       {sidebarOpen && (
         <div className="lg:hidden fixed inset-0 z-30 bg-charcoal/40" onClick={() => setSidebarOpen(false)}>
-          <div className="absolute left-0 top-14 bottom-0 w-60 bg-white" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute left-0 top-14 bottom-0 w-56 bg-white" onClick={(e) => e.stopPropagation()}>
             <nav className="px-3 py-4 space-y-0.5">
               {navItems.map((item) => {
                 const Icon = item.icon;
@@ -129,7 +133,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       )}
 
-      <main className="flex-1 lg:pl-60">
+      <main className="flex-1 lg:pl-56">
         <div className="pt-14 lg:pt-0">{children}</div>
       </main>
     </div>
