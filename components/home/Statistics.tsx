@@ -1,31 +1,13 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useInView } from "framer-motion";
 
 const stats = [
-  { value: 146, suffix: "+", label: "Happy Clients" },
-  { value: 4.1, suffix: "", label: "Google Rating", decimals: 1 },
-  { value: 420, suffix: "+", label: "Events Designed" },
-  { value: 6, suffix: " Yrs", label: "Of Excellence" },
+  { value: "146+", label: "Happy Clients" },
+  { value: "4.9", label: "Google Rating" },
+  { value: "420+", label: "Events Designed" },
+  { value: "6 Yrs", label: "Of Excellence" },
 ];
-
-function Counter({ target, suffix, decimals = 0 }: { target: number; suffix: string; decimals?: number }) {
-  const [count, setCount] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  const inView = useInView(ref, { once: true });
-  useEffect(() => {
-    if (!inView) return;
-    const dur = 1500, start = Date.now();
-    const run = () => {
-      const p = Math.min((Date.now() - start) / dur, 1);
-      setCount(Number((target * (1 - Math.pow(1 - p, 3))).toFixed(decimals)));
-      if (p < 1) requestAnimationFrame(run);
-    };
-    requestAnimationFrame(run);
-  }, [inView, target, decimals]);
-  return <span ref={ref}>{decimals > 0 ? count.toFixed(decimals) : Math.round(count)}{suffix}</span>;
-}
 
 export default function Statistics() {
   return (
@@ -35,9 +17,7 @@ export default function Statistics() {
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-0 lg:divide-x divide-border-light">
             {stats.map((s) => (
               <div key={s.label} className="text-center lg:px-8 first:pl-0 last:pr-0">
-                <div className="font-serif text-3xl sm:text-4xl md:text-5xl text-charcoal">
-                  <Counter target={s.value} suffix={s.suffix} decimals={s.decimals} />
-                </div>
+                <div className="font-serif text-3xl sm:text-4xl md:text-5xl text-charcoal">{s.value}</div>
                 <p className="mt-2 label-uppercase text-stone">{s.label}</p>
               </div>
             ))}

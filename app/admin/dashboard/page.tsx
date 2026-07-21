@@ -11,73 +11,56 @@ import { getBookingCounts, getRecentBookings, type BookingData } from "@/lib/fir
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 import Link from "next/link";
 
-interface DashboardStats {
-  upcoming_bookings: number;
-  today_appointments: number;
-  completed_bookings: number;
-  cancelled_bookings: number;
-  total_revenue: number;
-  pending_bookings: number;
-}
+const statCards = [
+  { title: "Upcoming Bookings", value: "0", icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+  { title: "Today's Appointments", value: "0", icon: Clock, color: "text-sage bg-sage/10" },
+  { title: "Completed", value: "0", icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+  { title: "Cancelled", value: "0", icon: XCircle, color: "text-red-600 bg-red-50" },
+  { title: "Pending Review", value: "0", icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+  { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
+];
 
 export default function AdminDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    upcoming_bookings: 0,
-    today_appointments: 0,
-    completed_bookings: 0,
-    cancelled_bookings: 0,
-    total_revenue: 0,
-    pending_bookings: 0,
-  });
+  const [stats, setStats] = useState(statCards);
   const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [firebaseReady, setFirebaseReady] = useState(true);
+  const [firebaseReady, setFirebaseReady] = useState<boolean | null>(null);
 
   useEffect(() => {
-    fetchDashboardData();
+    // Fetch data in background — page renders instantly
+    getBookingCounts().then((counts) => {
+      setStats([
+        { title: "Upcoming Bookings", value: String(counts.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+        { title: "Today's Appointments", value: String(counts.today), icon: Clock, color: "text-sage bg-sage/10" },
+        { title: "Completed", value: String(counts.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+        { title: "Cancelled", value: String(counts.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
+        { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+        { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
+      ]);
+      setFirebaseReady(true);
+    }).catch(() => {
+      setFirebaseReady(false);
+    });
+
+    getRecentBookings(5).then(setRecentBookings).catch(() => {
+      setRecentBookings([]);
+    });
   }, []);
 
-  const fetchDashboardData = async () => {
-    setIsLoading(true);
-    try {
-      const [counts, recent] = await Promise.all([
-        getBookingCounts(),
-        getRecentBookings(5),
+  const retry = () => {
+    setFirebaseReady(null);
+    getBookingCounts().then((counts) => {
+      setStats([
+        { title: "Upcoming Bookings", value: String(counts.upcoming), icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
+        { title: "Today's Appointments", value: String(counts.today), icon: Clock, color: "text-sage bg-sage/10" },
+        { title: "Completed", value: String(counts.completed), icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
+        { title: "Cancelled", value: String(counts.cancelled), icon: XCircle, color: "text-red-600 bg-red-50" },
+        { title: "Pending Review", value: String(counts.pending), icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
+        { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
       ]);
-      setStats({
-        upcoming_bookings: counts.upcoming,
-        today_appointments: counts.today,
-        completed_bookings: counts.completed,
-        cancelled_bookings: counts.cancelled,
-        total_revenue: 0,
-        pending_bookings: counts.pending,
-      });
-      setRecentBookings(recent);
       setFirebaseReady(true);
-    } catch {
-      setFirebaseReady(false);
-    } finally {
-      setIsLoading(false);
-    }
+    }).catch(() => setFirebaseReady(false));
+    getRecentBookings(5).then(setRecentBookings).catch(() => setRecentBookings([]));
   };
-
-  const statCards = [
-    { title: "Upcoming Bookings", value: stats.upcoming_bookings, icon: CalendarCheck, color: "text-blue-600 bg-blue-50" },
-    { title: "Today's Appointments", value: stats.today_appointments, icon: Clock, color: "text-sage bg-sage/10" },
-    { title: "Completed", value: stats.completed_bookings, icon: CheckCircle2, color: "text-purple-600 bg-purple-50" },
-    { title: "Cancelled", value: stats.cancelled_bookings, icon: XCircle, color: "text-red-600 bg-red-50" },
-    { title: "Pending Review", value: stats.pending_bookings, icon: AlertCircle, color: "text-amber-600 bg-amber-50" },
-    { title: "Revenue", value: "₹0", icon: IndianRupee, color: "text-gold bg-gold/10" },
-  ];
-
-  if (isLoading) {
-    return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-warm-gray font-body">Loading dashboard...</p>
-      </div>
-    );
-  }
 
   return (
     <div className="p-4 sm:p-6 lg:p-8">
@@ -87,55 +70,38 @@ export default function AdminDashboard() {
       </div>
 
       {/* Firebase Setup Banner */}
-      {!firebaseReady && (
-        <div className="mb-8 bg-white rounded-2xl border-2 border-gold/30 p-6 sm:p-8">
+      {firebaseReady === false && (
+        <div className="mb-8 bg-white rounded-2xl border-2 border-gold/30 p-6">
           <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
-              <AlertCircle className="w-6 h-6 text-gold" />
-            </div>
+            <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">
-              <h3 className="font-heading font-semibold text-charcoal mb-1">Firebase Setup Required</h3>
-              <p className="text-sm text-warm-gray font-body mb-4">Your dashboard can&apos;t connect to Firebase. Follow these steps:</p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-                {[
-                  { step: "1", text: "Go to Firebase Console → your project" },
-                  { step: "2", text: "Firestore Database → Create database → Test mode" },
-                  { step: "3", text: "Authentication → Enable Email/Password + Google" },
-                  { step: "4", text: "Storage → Get started → Test mode" },
-                  { step: "5", text: "Authentication → Users → Add your admin user" },
-                  { step: "6", text: "Come back here and click Retry" },
-                ].map(({ step, text }) => (
-                  <div key={step} className="flex gap-2 items-start">
-                    <span className="w-5 h-5 rounded-full bg-gold text-charcoal text-[10px] flex items-center justify-center font-bold shrink-0 mt-0.5">{step}</span>
-                    <p className="text-sm text-charcoal font-body">{text}</p>
-                  </div>
+              <h3 className="font-heading font-semibold text-charcoal mb-2">Firebase Setup Required</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-4">
+                {["Firebase Console → your project", "Firestore → Create database → Test mode", "Auth → Enable Email/Password + Google", "Storage → Get started → Test mode", "Auth → Users → Add admin user", "Refresh this page"].map((text, i) => (
+                  <p key={i} className="text-sm text-charcoal font-body"><span className="text-gold font-bold">{i+1}.</span> {text}</p>
                 ))}
               </div>
-              <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-gold text-charcoal px-5 py-2.5 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">
-                Open Firebase Console →
-              </a>
-              <button onClick={fetchDashboardData} className="inline-flex items-center gap-2 bg-charcoal text-ivory px-5 py-2.5 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">
-                Retry
-              </button>
+              <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center bg-gold text-charcoal px-5 py-2 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">Open Firebase →</a>
+              <button onClick={retry} className="inline-flex items-center bg-charcoal text-ivory px-5 py-2 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">Retry</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
-        {statCards.map((stat) => {
+      {/* Stats Grid — renders instantly */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        {stats.map((stat) => {
           const Icon = stat.icon;
           return (
             <Card key={stat.title}>
-              <CardContent className="p-6">
+              <CardContent className="p-5">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-warm-gray font-body">{stat.title}</p>
-                    <p className="text-2xl font-heading font-bold text-charcoal mt-1">{firebaseReady ? stat.value : "—"}</p>
+                    <p className="text-xs text-warm-gray font-body">{stat.title}</p>
+                    <p className="text-2xl font-heading font-bold text-charcoal mt-1">{stat.value}</p>
                   </div>
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
-                    <Icon className="w-6 h-6" />
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${stat.color}`}>
+                    <Icon className="w-5 h-5" />
                   </div>
                 </div>
               </CardContent>
@@ -148,24 +114,20 @@ export default function AdminDashboard() {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Recent Bookings</CardTitle>
-          <Link
-            href="/admin/bookings"
-            className="text-sm text-gold hover:underline font-body inline-flex items-center gap-1"
-          >
+          <Link href="/admin/bookings" className="text-sm text-gold hover:underline font-body inline-flex items-center gap-1">
             View All <ArrowRight className="w-3 h-3" />
           </Link>
         </CardHeader>
         <CardContent>
-          {!firebaseReady ? (
+          {firebaseReady === false ? (
             <div className="text-center py-8">
               <AlertCircle className="w-10 h-10 text-border-light mx-auto mb-3" />
-              <p className="text-warm-gray font-body text-sm">Set up Firebase to see bookings here</p>
+              <p className="text-warm-gray font-body text-sm">Set up Firebase to see bookings</p>
             </div>
           ) : recentBookings.length === 0 ? (
             <div className="text-center py-8">
               <Ticket className="w-10 h-10 text-border-light mx-auto mb-3" />
-              <p className="text-warm-gray font-body text-sm">No bookings yet. Share your booking page!</p>
-              <a href="/book" className="text-gold text-xs font-body hover:underline mt-2 inline-block">yourdomain.com/book →</a>
+              <p className="text-warm-gray font-body text-sm">No bookings yet</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -182,27 +144,17 @@ export default function AdminDashboard() {
                 <tbody>
                   {recentBookings.map((booking) => (
                     <tr key={booking.id} className="border-b border-border-light/50 hover:bg-cream/50 transition-colors">
+                      <td className="py-3 px-4"><span className="text-xs font-mono text-gold font-medium">{booking.ticket_id || "—"}</span></td>
                       <td className="py-3 px-4">
-                        <span className="text-xs font-mono text-gold font-medium">{booking.ticket_id || "—"}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <div>
-                          <p className="font-medium text-charcoal font-body">{booking.full_name}</p>
-                          <p className="text-xs text-warm-gray font-body">{booking.phone}</p>
-                        </div>
+                        <p className="font-medium text-charcoal font-body">{booking.full_name}</p>
+                        <p className="text-xs text-warm-gray font-body">{booking.phone}</p>
                       </td>
                       <td className="py-3 px-4 font-body capitalize text-charcoal">{booking.event_type.replace(/-/g, " ")}</td>
                       <td className="py-3 px-4 font-body">
-                        <div>
-                          <p className="text-charcoal">{formatDate(booking.event_date)}</p>
-                          <p className="text-xs text-warm-gray">{formatTime(booking.preferred_time)}</p>
-                        </div>
+                        <p className="text-charcoal">{formatDate(booking.event_date)}</p>
+                        <p className="text-xs text-warm-gray">{formatTime(booking.preferred_time)}</p>
                       </td>
-                      <td className="py-3 px-4">
-                        <Badge className={getBookingStatusColor(booking.status)}>
-                          {getBookingStatusLabel(booking.status)}
-                        </Badge>
-                      </td>
+                      <td className="py-3 px-4"><Badge className={getBookingStatusColor(booking.status)}>{getBookingStatusLabel(booking.status)}</Badge></td>
                     </tr>
                   ))}
                 </tbody>

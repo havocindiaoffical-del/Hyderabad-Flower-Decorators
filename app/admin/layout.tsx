@@ -20,16 +20,15 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const pathname = usePathname();
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [authChecked, setAuthChecked] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const isLoginPage = pathname === "/admin/login";
 
   useEffect(() => {
-    // Fast auth check — Firebase caches auth state
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
-      setLoading(false);
+      setAuthChecked(true);
       if (!firebaseUser && !isLoginPage) router.push("/admin/login");
     });
     return () => unsubscribe();
@@ -40,15 +39,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     router.push("/admin/login");
   };
 
-  // Login page renders without the admin sidebar
   if (isLoginPage) return <>{children}</>;
 
-  if (loading) return (
+  // Show page immediately once auth is resolved
+  if (!authChecked) return (
     <div className="min-h-screen bg-ivory flex items-center justify-center">
-      <div className="text-center">
-        <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-        <p className="text-xs text-warm-gray font-body">Loading...</p>
-      </div>
+      <div className="w-6 h-6 border-2 border-gold border-t-transparent rounded-full animate-spin" />
     </div>
   );
   if (!user) return null;
@@ -67,32 +63,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-body transition-colors",
-                  pathname === item.href
-                    ? "text-gold bg-gold/5"
-                    : "text-stone hover:text-charcoal hover:bg-cream"
-                )}
-              >
-                <Icon className="w-4 h-4" />
-                {item.label}
+              <Link key={item.href} href={item.href}
+                className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-body transition-colors", pathname === item.href ? "text-gold bg-gold/5" : "text-stone hover:text-charcoal hover:bg-cream")}>
+                <Icon className="w-4 h-4" />{item.label}
               </Link>
             );
           })}
         </nav>
         <div className="px-3 py-4 border-t border-border-light">
-          <div className="px-3 py-2 mb-2">
-            <p className="text-[10px] text-warm-gray font-body truncate">{user.email}</p>
-          </div>
-          <button
-            onClick={logout}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] text-red-500 hover:bg-red-50 w-full font-body transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-            Logout
+          <p className="px-3 py-1 text-[10px] text-warm-gray font-body truncate">{user.email}</p>
+          <button onClick={logout} className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] text-red-500 hover:bg-red-50 w-full font-body transition-colors mt-1">
+            <LogOut className="w-4 h-4" />Logout
           </button>
         </div>
       </aside>
@@ -112,19 +93,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               {navItems.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    onClick={() => setSidebarOpen(false)}
-                    className={cn(
-                      "flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-body",
-                      pathname === item.href
-                        ? "text-gold bg-gold/5"
-                        : "text-stone hover:text-charcoal"
-                    )}
-                  >
-                    <Icon className="w-4 h-4" />
-                    {item.label}
+                  <Link key={item.href} href={item.href} onClick={() => setSidebarOpen(false)}
+                    className={cn("flex items-center gap-3 px-3 py-2.5 rounded-lg text-[12px] font-body", pathname === item.href ? "text-gold bg-gold/5" : "text-stone hover:text-charcoal")}>
+                    <Icon className="w-4 h-4" />{item.label}
                   </Link>
                 );
               })}

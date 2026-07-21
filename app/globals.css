@@ -34,12 +34,7 @@ body {
   overflow-x: hidden;
 }
 
-/* Hide default cursor on desktop */
-@media (pointer: fine) {
-  * { cursor: none !important; }
-  /* Restore cursor for form inputs on admin */
-  input, select, textarea { cursor: text !important; }
-}
+/* Custom cursor disabled for performance */
 
 h1, h2, h3 { font-family: var(--font-manrope), system-ui, sans-serif; }
 .font-serif, .font-editorial { font-family: var(--font-playfair), Georgia, serif; }
@@ -47,7 +42,7 @@ h1, h2, h3 { font-family: var(--font-manrope), system-ui, sans-serif; }
 ::selection { background: #B8935F; color: #FAF8F5; }
 
 html {
-  scroll-behavior: auto; /* Lenis handles smooth scroll */
+  scroll-behavior: smooth;
 }
 
 ::-webkit-scrollbar { width: 5px; }
@@ -161,24 +156,39 @@ main { animation: fadeIn 0.3s ease; }
   from { opacity: 0; }
   to { opacity: 1; }
 }
-
-/* Lenis styles */
-html.lenis, html.lenis body {
-  height: auto;
+/* Gold underline animation */
+.gold-underline {
+  position: relative;
+  display: inline-block;
+}
+.gold-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 1px;
+  background: #B8935F;
+  transition: width 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.gold-underline:hover::after {
+  width: 100%;
 }
 
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(to right, transparent, #E8E2DA, transparent);
 }
 
-.lenis.lenis-smooth [data-lenis-prevent] {
-  overscroll-behavior: contain;
+/* Hero fade-up animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
-.lenis.lenis-stopped {
-  overflow: hidden;
-}
-
-.lenis.lenis-smooth iframe {
-  pointer-events: none;
+/* Lightweight fade-in */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
