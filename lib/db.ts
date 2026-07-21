@@ -3,7 +3,7 @@ import postgres from "postgres";
 import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL ||
-  "postgresql://neondb_owner:npg_cNHGqwXCl1i8@ep-delicate-mouse-au1qf5cw.c-10.us-east-1.aws.neon.tech/neondb?sslmode=require";
+  "postgresql://havocindiaoffical_gm:PwPqgFVGyeCSUsfMPfACSQ@lilac-tuna-29930.j77.aws-ap-south-1.cockroachlabs.cloud:26257/defaultdb?sslmode=require&options=--cluster=lilac-tuna-29930";
 
 const client = postgres(connectionString, {
   ssl: "require",

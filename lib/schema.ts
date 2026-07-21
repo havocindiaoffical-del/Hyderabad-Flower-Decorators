@@ -1,6 +1,6 @@
 import {
   pgTable,
-  serial,
+  integer,
   text,
   varchar,
   boolean,
@@ -11,7 +11,7 @@ import {
 // ─── Bookings ──────────────────────────────────────────────────────
 
 export const bookings = pgTable("bookings", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   ticketId: varchar("ticket_id", { length: 20 }).notNull().unique(),
   fullName: varchar("full_name", { length: 200 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
@@ -35,7 +35,7 @@ export const bookings = pgTable("bookings", {
 // ─── Gallery Images ────────────────────────────────────────────────
 
 export const galleryImages = pgTable("gallery_images", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   url: text("url").notNull(),
   title: varchar("title", { length: 200 }).notNull(),
   category: varchar("category", { length: 100 }).notNull(),
@@ -46,7 +46,7 @@ export const galleryImages = pgTable("gallery_images", {
 // ─── Calendar Blocks ───────────────────────────────────────────────
 
 export const calendarBlocks = pgTable("calendar_blocks", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   date: varchar("date", { length: 20 }).notNull().unique(),
   blocked: boolean("blocked").notNull().default(true),
   reason: varchar("reason", { length: 300 }).default(""),
@@ -55,7 +55,7 @@ export const calendarBlocks = pgTable("calendar_blocks", {
 // ─── Business Settings ─────────────────────────────────────────────
 
 export const businessSettings = pgTable("business_settings", {
-  id: serial("id").primaryKey(),
+  id: integer("id").primaryKey().generatedByDefaultAsIdentity(),
   businessName: varchar("business_name", { length: 200 }).notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   email: varchar("email", { length: 300 }).notNull(),
