@@ -23,19 +23,24 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
+  const isLoginPage = pathname === "/admin/login";
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
       setUser(firebaseUser);
       setLoading(false);
-      if (!firebaseUser) router.push("/admin/login");
+      if (!firebaseUser && !isLoginPage) router.push("/admin/login");
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, isLoginPage]);
 
   const logout = async () => {
     await signOut(auth);
     router.push("/admin/login");
   };
+
+  // Login page renders without the admin sidebar
+  if (isLoginPage) return <>{children}</>;
 
   if (loading) return (
     <div className="min-h-screen bg-ivory flex items-center justify-center">
