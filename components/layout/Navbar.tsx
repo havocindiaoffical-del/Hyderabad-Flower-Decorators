@@ -48,14 +48,14 @@ export default function Navbar() {
       >
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 flex items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="group flex items-center gap-2.5">
-            <span className="font-serif text-xl sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
+          <Link href="/" className="group flex items-center gap-1.5 sm:gap-2.5">
+            <span className="font-serif text-lg sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
               Hyderabad
             </span>
-            <span className="font-serif text-xl sm:text-2xl tracking-tight" style={{ fontWeight: 400, color: "#B8935F", fontStyle: "italic" }}>
+            <span className="font-serif text-lg sm:text-2xl tracking-tight" style={{ fontWeight: 400, color: "#B8935F", fontStyle: "italic" }}>
               Flower
             </span>
-            <span className="hidden sm:inline font-serif text-xl sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
+            <span className="font-serif text-lg sm:text-2xl text-charcoal tracking-tight" style={{ fontWeight: 400 }}>
               Decorators
             </span>
           </Link>
