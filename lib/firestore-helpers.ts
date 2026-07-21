@@ -19,10 +19,22 @@ import {
 } from "firebase/firestore";
 import { db } from "./firebase";
 
+// ─── Ticket ID Generator ──────────────────────────────────────────
+
+function generateTicketId(): string {
+  const prefix = "HFD";
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 5).toUpperCase();
+  return `${prefix}-${timestamp}-${random}`;
+}
+
 // ─── Booking helpers ─────────────────────────────────────────────
+
+export type BookingStatus = "pending" | "confirmed" | "in_progress" | "completed" | "cancelled";
 
 export interface BookingData {
   id?: string;
+  ticket_id: string;
   full_name: string;
   phone: string;
   email: string;
@@ -35,26 +47,49 @@ export interface BookingData {
   guest_count: string;
   special_notes: string;
   images: string[];
-  status: "pending" | "confirmed" | "completed" | "cancelled";
+  status: BookingStatus;
+  user_uid?: string;
+  admin_notes?: string;
   created_at: string;
   updated_at: string;
 }
 
-export async function createBooking(data: Omit<BookingData, "id" | "created_at" | "updated_at" | "status">): Promise<string> {
+export async function createBooking(data: Omit<BookingData, "id" | "created_at" | "updated_at" | "status" | "ticket_id">): Promise<{ id: string; ticket_id: string }> {
   const now = new Date().toISOString();
+  const ticket_id = generateTicketId();
   const docRef = await addDoc(collection(db, "bookings"), {
     ...data,
+    ticket_id,
     status: "pending",
     created_at: now,
     updated_at: now,
   });
-  return docRef.id;
+  return { id: docRef.id, ticket_id };
 }
 
 export async function getBooking(id: string): Promise<BookingData | null> {
   const snap = await getDoc(doc(db, "bookings", id));
   if (!snap.exists()) return null;
   return { id: snap.id, ...snap.data() } as BookingData;
+}
+
+export async function getBookingByTicketId(ticketId: string): Promise<BookingData | null> {
+  const q = query(collection(db, "bookings"), where("ticket_id", "==", ticketId), limit(1));
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  return { id: snap.docs[0].id, ...snap.docs[0].data() } as BookingData;
+}
+
+export async function getBookingsByUserUid(uid: string): Promise<BookingData[]> {
+  const q = query(collection(db, "bookings"), where("user_uid", "==", uid), orderBy("created_at", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as BookingData));
+}
+
+export async function getBookingsByPhone(phone: string): Promise<BookingData[]> {
+  const q = query(collection(db, "bookings"), where("phone", "==", phone), orderBy("created_at", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => ({ id: d.id, ...d.data() } as BookingData));
 }
 
 export async function getBookings(opts?: {
@@ -77,14 +112,14 @@ export async function getBookings(opts?: {
 
   let allDocs = snapshot.docs.map((d) => ({ id: d.id, ...d.data() } as BookingData));
 
-  // Client-side search filter
   if (opts?.search) {
     const s = opts.search.toLowerCase();
     allDocs = allDocs.filter(
       (b) =>
         b.full_name?.toLowerCase().includes(s) ||
         b.phone?.includes(s) ||
-        b.email?.toLowerCase().includes(s)
+        b.email?.toLowerCase().includes(s) ||
+        b.ticket_id?.toLowerCase().includes(s)
     );
   }
 
@@ -101,11 +136,15 @@ export async function getRecentBookings(count: number): Promise<BookingData[]> {
   return snap.docs.map((d) => ({ id: d.id, ...d.data() } as BookingData));
 }
 
-export async function updateBookingStatus(id: string, status: string): Promise<void> {
-  await updateDoc(doc(db, "bookings", id), {
+export async function updateBookingStatus(id: string, status: string, adminNotes?: string): Promise<void> {
+  const updateData: Record<string, string> = {
     status,
     updated_at: new Date().toISOString(),
-  });
+  };
+  if (adminNotes) {
+    updateData.admin_notes = adminNotes;
+  }
+  await updateDoc(doc(db, "bookings", id), updateData);
 }
 
 export async function getBookingCounts(): Promise<{
@@ -187,7 +226,6 @@ export async function getCalendarBlocks(startDate: string, endDate: string): Pro
 }
 
 export async function setCalendarBlock(date: string, blocked: boolean, reason: string): Promise<void> {
-  // Check if block exists
   const q = query(collection(db, "calendar_blocks"), where("date", "==", date));
   const snap = await getDocs(q);
 

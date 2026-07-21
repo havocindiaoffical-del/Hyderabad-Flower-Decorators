@@ -48,8 +48,20 @@ export function getBookingStatusColor(status: string): string {
   switch (status) {
     case "confirmed": return "text-sage bg-sage/10";
     case "pending": return "text-amber-700 bg-amber-50";
+    case "in_progress": return "text-purple-700 bg-purple-50";
     case "completed": return "text-blue-700 bg-blue-50";
     case "cancelled": return "text-red-700 bg-red-50";
     default: return "text-stone bg-cream";
+  }
+}
+
+export function getBookingStatusLabel(status: string): string {
+  switch (status) {
+    case "pending": return "Pending Review";
+    case "confirmed": return "Confirmed";
+    case "in_progress": return "In Progress";
+    case "completed": return "Completed";
+    case "cancelled": return "Cancelled";
+    default: return status;
   }
 }

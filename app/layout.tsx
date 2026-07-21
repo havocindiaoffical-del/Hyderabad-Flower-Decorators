@@ -19,6 +19,7 @@ import Footer from "@/components/layout/Footer";
 import FloatingActions from "@/components/layout/FloatingActions";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import CustomCursor from "@/components/ui/CustomCursor";
+import { UserAuthProvider } from "@/components/providers/UserAuth";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -45,13 +46,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body className="min-h-full flex flex-col bg-ivory text-charcoal font-body">
-        <SmoothScroll>
-          <CustomCursor />
-          <Navbar />
-          <main className="flex-1">{children}</main>
-          <Footer />
-          <FloatingActions />
-        </SmoothScroll>
+        <UserAuthProvider>
+          <SmoothScroll>
+            <CustomCursor />
+            <Navbar />
+            <main className="flex-1">{children}</main>
+            <Footer />
+            <FloatingActions />
+          </SmoothScroll>
+        </UserAuthProvider>
       </body>
     </html>
   );

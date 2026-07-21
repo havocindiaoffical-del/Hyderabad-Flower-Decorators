@@ -19,6 +19,8 @@ export async function POST(request: NextRequest) {
     const guest_count = (formData.get("guest_count") as string)?.trim() || "";
     const special_notes = (formData.get("special_notes") as string)?.trim() || "";
 
+    const user_uid = (formData.get("user_uid") as string)?.trim() || "";
+
     // Validate required fields
     if (!full_name || !phone || !email || !event_type || !event_date || !preferred_time || !venue_address) {
       return NextResponse.json(
@@ -64,7 +66,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create booking in Firestore
-    const bookingId = await createBooking({
+    const bookingResult = await createBooking({
       full_name,
       phone,
       email,
@@ -77,6 +79,7 @@ export async function POST(request: NextRequest) {
       guest_count,
       special_notes,
       images: imageUrls,
+      user_uid: user_uid || "",
     });
 
     // Send email notifications (if Resend is configured)
@@ -130,7 +133,7 @@ export async function POST(request: NextRequest) {
               ${special_notes ? `<p style="margin: 8px 0 0;"><strong>Notes:</strong> ${special_notes}</p>` : ""}
               ${imageUrls.length > 0 ? `<p style="margin: 8px 0 0;"><strong>Images:</strong> ${imageUrls.length} reference image(s)</p>` : ""}
             </div>
-            <p style="color: #B8935F;">Booking ID: ${bookingId}</p>
+            <p style="color: #B8935F;">Ticket ID: ${bookingResult.ticket_id}</p>
           </div>
         `,
       });
@@ -139,7 +142,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json(
-      { success: true, bookingId },
+      { success: true, bookingId: bookingResult.id, ticket_id: bookingResult.ticket_id },
       { status: 201 }
     );
   } catch {

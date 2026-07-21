@@ -1,10 +1,11 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Upload, X, CheckCircle2, Phone, Calendar } from "lucide-react";
+import { Upload, X, CheckCircle2, Phone, Calendar, Copy, Check } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useUserAuth } from "@/components/providers/UserAuth";
 
 const eventTypes = [
   { value: "housewarming", label: "Housewarming" }, { value: "wedding", label: "Wedding" },
@@ -32,10 +33,20 @@ const inputCls = "flex h-12 w-full rounded-xl border border-border-light bg-ivor
 export default function BookingPageContent() {
   const sp = useSearchParams();
   const fileRef = useRef<HTMLInputElement>(null);
+  const { user, signInWithGoogle, userName, userEmail, loading: authLoading } = useUserAuth();
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [ticketId, setTicketId] = useState("");
+  const [copied, setCopied] = useState(false);
   const [fd, setFd] = useState<FD>({ full_name: "", phone: "", email: "", event_type: sp.get("event_type") || "", event_date: "", preferred_time: "", venue_address: "", google_maps_link: "", estimated_budget: "", guest_count: "", special_notes: "", images: [] });
   const [errors, setErrors] = useState<FE>({});
+
+  // Auto-fill from Google account
+  useEffect(() => {
+    if (user && userName && !fd.full_name) {
+      setFd((prev) => ({ ...prev, full_name: userName, email: userEmail }));
+    }
+  }, [user, userName, userEmail, fd.full_name]);
 
   const ch = (f: keyof FD, v: string) => { setFd((p) => ({ ...p, [f]: v })); if (errors[f]) setErrors((p) => { const n = { ...p }; delete n[f]; return n; }); };
 
@@ -69,22 +80,59 @@ export default function BookingPageContent() {
     try {
       const sd = new FormData();
       Object.entries(fd).forEach(([k, v]) => { if (k !== "images" && v) sd.append(k, v); });
+      if (user?.uid) sd.append("user_uid", user.uid);
       fd.images.forEach((img, i) => sd.append(`image_${i}`, img));
       const res = await fetch("/api/booking", { method: "POST", body: sd });
-      if (!res.ok) throw new Error("Failed");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed");
+      setTicketId(data.ticket_id || "");
       setSuccess(true);
     } catch (err) { setErrors({ submit: err instanceof Error ? err.message : "Error" }); }
     finally { setSubmitting(false); }
+  };
+
+  const copyTicketId = () => {
+    navigator.clipboard.writeText(ticketId);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (success) {
     return (
       <div className="pt-24 min-h-screen flex items-center justify-center bg-ivory">
         <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="max-w-lg mx-auto px-6 text-center">
-          <div className="w-16 h-16 rounded-full border border-gold flex items-center justify-center mx-auto mb-8"><CheckCircle2 className="w-8 h-8 text-gold" /></div>
-          <h2 className="heading-section text-charcoal mb-4">Request Received</h2>
+          <div className="w-16 h-16 rounded-full border-2 border-gold flex items-center justify-center mx-auto mb-8"><CheckCircle2 className="w-8 h-8 text-gold" /></div>
+          <h2 className="heading-section text-charcoal mb-4">Booking Submitted!</h2>
           <p className="text-stone font-light mb-2">Thank you, {fd.full_name}!</p>
-          <p className="text-sm text-warm-gray font-body mb-8">We'll respond within 2 hours with a personalized quote.</p>
+          <p className="text-sm text-warm-gray font-body mb-6">We&apos;ll review your request and respond within 2 hours.</p>
+
+          {/* Ticket ID Card */}
+          <div className="bg-white rounded-2xl p-6 border-2 border-gold/30 mb-6 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)]">
+            <span className="label-uppercase text-gold mb-3 block">Your Ticket ID</span>
+            <div className="flex items-center justify-center gap-3 mb-4">
+              <span className="text-2xl font-heading font-bold text-charcoal tracking-wider">{ticketId}</span>
+              <button onClick={copyTicketId} className="w-8 h-8 rounded-lg bg-cream border border-border-light flex items-center justify-center hover:bg-gold/10 transition-colors">
+                {copied ? <Check className="w-4 h-4 text-sage" /> : <Copy className="w-4 h-4 text-stone" />}
+              </button>
+            </div>
+            <p className="text-xs text-warm-gray font-body">Save this ID to track your booking status anytime</p>
+          </div>
+
+          {/* Status Steps */}
+          <div className="bg-cream rounded-2xl p-6 border border-border-light mb-6">
+            <div className="flex items-center justify-between relative">
+              <div className="absolute top-3 left-[15%] right-[15%] h-0.5 bg-border-light" />
+              {["Pending", "Confirmed", "In Progress", "Completed"].map((step, i) => (
+                <div key={step} className="relative flex flex-col items-center z-10">
+                  <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? "bg-gold text-charcoal" : "bg-white border border-border-light text-warm-gray"}`}>
+                    {i === 0 ? "✓" : i + 1}
+                  </div>
+                  <span className={`text-[10px] mt-1 font-body ${i === 0 ? "text-gold font-medium" : "text-warm-gray"}`}>{step}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="bg-cream rounded-2xl p-6 text-left mb-8 border border-border-light">
             <div className="space-y-3 text-sm font-body">
               <div className="flex justify-between"><span className="text-stone">Event</span><span className="text-charcoal">{eventTypes.find((e) => e.value === fd.event_type)?.label}</span></div>
@@ -93,8 +141,8 @@ export default function BookingPageContent() {
             </div>
           </div>
           <div className="flex items-center justify-center gap-4">
-            <a href="tel:+919876543210"><button className="flex items-center gap-2 bg-charcoal text-ivory px-6 py-3 rounded-full label-uppercase text-xs"><Phone className="w-3 h-3" />Call</button></a>
-            <a href="/"><button className="flex items-center gap-2 border border-border-light text-charcoal px-6 py-3 rounded-full label-uppercase text-xs">Home</button></a>
+            <a href="/track"><button className="flex items-center gap-2 bg-gold text-charcoal px-6 py-3 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors"><Calendar className="w-3 h-3" />Track Booking</button></a>
+            <a href="tel:+919876543210"><button className="flex items-center gap-2 border border-border-light text-charcoal px-6 py-3 rounded-full label-uppercase text-xs"><Phone className="w-3 h-3" />Call</button></a>
           </div>
         </motion.div>
       </div>
@@ -108,7 +156,7 @@ export default function BookingPageContent() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
             <span className="label-uppercase text-gold mb-4 block">Appointment</span>
             <h1 className="heading-section text-charcoal">Schedule your <em className="font-serif text-gold">decoration</em></h1>
-            <p className="mt-4 text-stone font-light max-w-lg mx-auto">Fill in the details below. We'll respond within 2 hours with a personalized quote.</p>
+            <p className="mt-4 text-stone font-light max-w-lg mx-auto">Fill in the details below. We&apos;ll respond within 2 hours with a personalized quote.</p>
           </motion.div>
         </div>
       </section>
@@ -119,6 +167,43 @@ export default function BookingPageContent() {
             className="bg-white rounded-2xl border border-border-light shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)] p-8 sm:p-10 space-y-10">
 
             {errors.submit && <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-body">{errors.submit}</div>}
+
+            {/* Quick Sign In */}
+            <div>
+              <span className="label-uppercase text-gold mb-4 block">Quick Sign In</span>
+              {user ? (
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-cream border border-border-light">
+                  {user.photoURL ? (
+                    <img src={user.photoURL} alt="" className="w-10 h-10 rounded-full object-cover" />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gold/20 flex items-center justify-center text-gold font-heading font-bold text-sm">
+                      {(user.displayName || user.email || "U")[0].toUpperCase()}
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-charcoal font-body">{user.displayName || user.email}</p>
+                    <p className="text-xs text-warm-gray font-body">Signed in — your details are auto-filled</p>
+                  </div>
+                  <button type="button" onClick={() => useUserAuth} className="ml-auto text-xs text-gold font-body hover:underline">Change</button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={signInWithGoogle}
+                  disabled={authLoading}
+                  className="w-full flex items-center justify-center gap-3 bg-white border border-border-light text-charcoal h-12 rounded-xl hover:bg-cream transition-colors disabled:opacity-50"
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24">
+                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                  </svg>
+                  Sign in with Google to auto-fill details
+                </button>
+              )}
+              <p className="text-xs text-warm-gray font-body mt-2">Or fill in your details manually below</p>
+            </div>
 
             {/* Personal */}
             <div>
