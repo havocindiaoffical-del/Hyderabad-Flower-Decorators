@@ -32,13 +32,14 @@ export default function AdminDashboard() {
   });
   const [recentBookings, setRecentBookings] = useState<BookingData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(true);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   const fetchDashboardData = async () => {
+    setIsLoading(true);
     try {
       const [counts, recent] = await Promise.all([
         getBookingCounts(),
@@ -55,9 +56,9 @@ export default function AdminDashboard() {
       });
 
       setRecentBookings(recent);
-      setError(false);
+      setFirebaseReady(true);
     } catch {
-      setError(true);
+      setFirebaseReady(false);
     } finally {
       setIsLoading(false);
     }
@@ -74,77 +75,9 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="p-4 sm:p-6 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-heading font-bold text-charcoal">Dashboard</h1>
-          <p className="text-sm text-warm-gray font-body mt-1">Welcome back!</p>
-        </div>
-
-        {/* Setup Notice */}
-        <div className="bg-white rounded-2xl border border-border-light p-8 text-center max-w-2xl mx-auto">
-          <div className="w-16 h-16 rounded-full border-2 border-gold flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-8 h-8 text-gold" />
-          </div>
-          <h2 className="font-heading text-lg text-charcoal mb-3">Firebase Setup Required</h2>
-          <p className="text-sm text-warm-gray font-body mb-6 max-w-md mx-auto">
-            To see your dashboard data, you need to set up Firebase Firestore. Follow these steps:
-          </p>
-          <div className="text-left max-w-sm mx-auto space-y-3 mb-6">
-            <div className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-gold text-charcoal text-xs flex items-center justify-center font-bold shrink-0">1</span>
-              <p className="text-sm text-charcoal font-body">Go to <a href="https://console.firebase.google.com" target="_blank" className="text-gold hover:underline">Firebase Console</a></p>
-            </div>
-            <div className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-gold text-charcoal text-xs flex items-center justify-center font-bold shrink-0">2</span>
-              <p className="text-sm text-charcoal font-body">Open your project → Firestore Database → Create database</p>
-            </div>
-            <div className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-gold text-charcoal text-xs flex items-center justify-center font-bold shrink-0">3</span>
-              <p className="text-sm text-charcoal font-body">Start in <strong>test mode</strong> (we&apos;ll add security rules later)</p>
-            </div>
-            <div className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-gold text-charcoal text-xs flex items-center justify-center font-bold shrink-0">4</span>
-              <p className="text-sm text-charcoal font-body">Enable <strong>Authentication</strong> → Email/Password + Google</p>
-            </div>
-            <div className="flex gap-3 items-start">
-              <span className="w-6 h-6 rounded-full bg-gold text-charcoal text-xs flex items-center justify-center font-bold shrink-0">5</span>
-              <p className="text-sm text-charcoal font-body">Refresh this page after setup</p>
-            </div>
-          </div>
-          <button onClick={fetchDashboardData} className="bg-charcoal text-ivory px-6 py-3 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">
-            Retry Connection
-          </button>
-        </div>
-
-        {/* Show empty stat cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
-          {statCards.map((stat) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={stat.title}>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm text-warm-gray font-body">{stat.title}</p>
-                      <p className="text-2xl font-heading font-bold text-charcoal mt-1">0</p>
-                    </div>
-                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
-                      <Icon className="w-6 h-6" />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+        <p className="text-sm text-warm-gray font-body">Loading dashboard...</p>
       </div>
     );
   }
@@ -153,12 +86,46 @@ export default function AdminDashboard() {
     <div className="p-4 sm:p-6 lg:p-8">
       <div className="mb-8">
         <h1 className="text-2xl font-heading font-bold text-charcoal">Dashboard</h1>
-        <p className="text-sm text-warm-gray font-body mt-1">
-          Welcome back! Here&apos;s an overview of your bookings.
-        </p>
+        <p className="text-sm text-warm-gray font-body mt-1">Welcome back! Here&apos;s an overview of your bookings.</p>
       </div>
 
-      {/* Stats Grid */}
+      {/* Firebase Setup Banner */}
+      {!firebaseReady && (
+        <div className="mb-8 bg-white rounded-2xl border-2 border-gold/30 p-6 sm:p-8">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-gold/10 flex items-center justify-center shrink-0">
+              <AlertCircle className="w-6 h-6 text-gold" />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-heading font-semibold text-charcoal mb-1">Firebase Setup Required</h3>
+              <p className="text-sm text-warm-gray font-body mb-4">Your dashboard can&apos;t connect to Firebase. Follow these steps to get started:</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                {[
+                  { step: "1", text: "Go to Firebase Console → your project" },
+                  { step: "2", text: "Firestore Database → Create database → Test mode" },
+                  { step: "3", text: "Authentication → Enable Email/Password + Google" },
+                  { step: "4", text: "Storage → Get started → Test mode" },
+                  { step: "5", text: "Authentication → Users → Add your admin user" },
+                  { step: "6", text: "Come back here and click Retry" },
+                ].map(({ step, text }) => (
+                  <div key={step} className="flex gap-2 items-start">
+                    <span className="w-5 h-5 rounded-full bg-gold text-charcoal text-[10px] flex items-center justify-center font-bold shrink-0 mt-0.5">{step}</span>
+                    <p className="text-sm text-charcoal font-body">{text}</p>
+                  </div>
+                ))}
+              </div>
+              <a href="https://console.firebase.google.com" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 bg-gold text-charcoal px-5 py-2.5 rounded-full label-uppercase text-xs font-semibold hover:bg-gold-light transition-colors mr-3">
+                Open Firebase Console →
+              </a>
+              <button onClick={fetchDashboardData} className="inline-flex items-center gap-2 bg-charcoal text-ivory px-5 py-2.5 rounded-full label-uppercase text-xs hover:bg-graphite transition-colors">
+                <Loader2 className="w-3 h-3" /> Retry
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Stats Grid — always visible */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {statCards.map((stat, index) => {
           const Icon = stat.icon;
@@ -174,7 +141,7 @@ export default function AdminDashboard() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm text-warm-gray font-body">{stat.title}</p>
-                      <p className="text-2xl font-heading font-bold text-charcoal mt-1">{stat.value}</p>
+                      <p className="text-2xl font-heading font-bold text-charcoal mt-1">{firebaseReady ? stat.value : "—"}</p>
                     </div>
                     <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${stat.color}`}>
                       <Icon className="w-6 h-6" />
@@ -204,13 +171,16 @@ export default function AdminDashboard() {
             </Link>
           </CardHeader>
           <CardContent>
-            {recentBookings.length === 0 ? (
+            {!firebaseReady ? (
+              <div className="text-center py-8">
+                <AlertCircle className="w-10 h-10 text-border-light mx-auto mb-3" />
+                <p className="text-warm-gray font-body text-sm">Set up Firebase to see bookings here</p>
+              </div>
+            ) : recentBookings.length === 0 ? (
               <div className="text-center py-8">
                 <Ticket className="w-10 h-10 text-border-light mx-auto mb-3" />
-                <p className="text-warm-gray font-body text-sm">
-                  No bookings yet. They&apos;ll appear here once customers start booking.
-                </p>
-                <p className="text-xs text-warm-gray/60 font-body mt-1">Share your booking page link with customers!</p>
+                <p className="text-warm-gray font-body text-sm">No bookings yet. Share your booking page!</p>
+                <a href="/book" className="text-gold text-xs font-body hover:underline mt-2 inline-block">yourdomain.com/book →</a>
               </div>
             ) : (
               <div className="overflow-x-auto">

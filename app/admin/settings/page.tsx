@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Save, Loader2 } from "lucide-react";
+import { Save, Loader2, AlertCircle } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -52,6 +52,7 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<SettingsForm>(defaultSettings);
   const [isSaving, setIsSaving] = useState(false);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [firebaseReady, setFirebaseReady] = useState(true);
 
   useEffect(() => {
     fetchSettings();
@@ -82,8 +83,9 @@ export default function AdminSettings() {
           sunday_hours: hours.sunday || "9:00 AM - 9:00 PM",
         });
       }
+      setFirebaseReady(true);
     } catch {
-      // Use defaults
+      setFirebaseReady(false);
     } finally {
       setIsLoaded(true);
     }
@@ -121,7 +123,7 @@ export default function AdminSettings() {
       await saveBusinessSettings(data);
       alert("Settings saved successfully!");
     } catch {
-      alert("Failed to save settings. Please try again.");
+      alert("Failed to save settings. Make sure Firebase Firestore is set up.");
     } finally {
       setIsSaving(false);
     }
@@ -129,8 +131,9 @@ export default function AdminSettings() {
 
   if (!isLoaded) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-warm-gray font-body">Loading settings...</p>
       </div>
     );
   }
@@ -142,11 +145,18 @@ export default function AdminSettings() {
           <h1 className="text-2xl font-heading font-bold text-charcoal">Settings</h1>
           <p className="text-sm text-warm-gray font-body mt-1">Manage your business information and preferences</p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving} variant="default" className="gap-2">
+        <Button onClick={handleSave} disabled={isSaving || !firebaseReady} variant="default" className="gap-2">
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Changes
         </Button>
       </div>
+
+      {!firebaseReady && (
+        <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-gold shrink-0" />
+          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore to save settings.</p>
+        </div>
+      )}
 
       <div className="space-y-6">
         <Card>

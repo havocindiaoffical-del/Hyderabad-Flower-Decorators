@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
-import { ChevronLeft, ChevronRight, Lock, Unlock } from "lucide-react";
+import { ChevronLeft, ChevronRight, Lock, Unlock, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -13,7 +13,7 @@ import {
   getBookingsForDateRange, getCalendarBlocks, setCalendarBlock,
   type BookingData, type CalendarBlockData,
 } from "@/lib/firestore-helpers";
-import { formatDate, formatTime, getBookingStatusColor } from "@/lib/utils";
+import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface CalendarDay {
   date: string;
@@ -31,6 +31,7 @@ export default function AdminCalendar() {
   const [selectedDay, setSelectedDay] = useState<CalendarDay | null>(null);
   const [blockedDates, setBlockedDates] = useState<Record<string, CalendarBlockData>>({});
   const [isLoading, setIsLoading] = useState(true);
+  const [firebaseReady, setFirebaseReady] = useState(true);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -48,10 +49,12 @@ export default function AdminCalendar() {
       const blocks: Record<string, CalendarBlockData> = {};
       blocksData.forEach((b) => { blocks[b.date] = b; });
       setBlockedDates(blocks);
+      setFirebaseReady(true);
 
       generateCalendarDays(bookingsData, blocks);
     } catch {
-      // Handle error
+      setFirebaseReady(false);
+      generateCalendarDays([], {});
     } finally {
       setIsLoading(false);
     }
@@ -124,8 +127,9 @@ export default function AdminCalendar() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-warm-gray font-body">Loading calendar...</p>
       </div>
     );
   }
@@ -136,6 +140,13 @@ export default function AdminCalendar() {
         <h1 className="text-2xl font-heading font-bold text-charcoal">Calendar</h1>
         <p className="text-sm text-warm-gray font-body mt-1">View and manage booking availability</p>
       </div>
+
+      {!firebaseReady && (
+        <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-gold shrink-0" />
+          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore to see booking data on the calendar.</p>
+        </div>
+      )}
 
       <div className="flex items-center gap-6 mb-6">
         <div className="flex items-center gap-2">
@@ -225,7 +236,7 @@ export default function AdminCalendar() {
                     <div key={booking.id} className="p-3 rounded-xl bg-cream border border-border-light">
                       <div className="flex items-center justify-between mb-2">
                         <span className="font-heading font-medium text-sm text-charcoal">{booking.full_name}</span>
-                        <Badge className={getBookingStatusColor(booking.status)}>{booking.status}</Badge>
+                        <Badge className={getBookingStatusColor(booking.status)}>{getBookingStatusLabel(booking.status)}</Badge>
                       </div>
                       <div className="text-xs text-warm-gray font-body space-y-1">
                         <p>{booking.event_type.replace(/-/g, " ")} • {formatTime(booking.preferred_time)}</p>

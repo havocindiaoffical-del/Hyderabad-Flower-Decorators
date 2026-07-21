@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import { Trash2, Upload, Image as ImageIcon } from "lucide-react";
+import { Trash2, Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +22,7 @@ export default function AdminGallery() {
   const [isUploading, setIsUploading] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newCategory, setNewCategory] = useState("");
+  const [firebaseReady, setFirebaseReady] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -32,8 +33,10 @@ export default function AdminGallery() {
     try {
       const data = await getGalleryImages();
       setImages(data);
+      setFirebaseReady(true);
     } catch {
-      // Handle error
+      setFirebaseReady(false);
+      setImages([]);
     } finally {
       setIsLoading(false);
     }
@@ -74,7 +77,6 @@ export default function AdminGallery() {
       await deleteGalleryImage(id);
       fetchGallery();
     } catch {
-      // Still remove from Firestore even if storage delete fails
       await deleteGalleryImage(id);
       fetchGallery();
     }
@@ -91,8 +93,9 @@ export default function AdminGallery() {
 
   if (isLoading) {
     return (
-      <div className="p-6 flex items-center justify-center min-h-[60vh]">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
+        <p className="text-sm text-warm-gray font-body">Loading gallery...</p>
       </div>
     );
   }
@@ -103,6 +106,13 @@ export default function AdminGallery() {
         <h1 className="text-2xl font-heading font-bold text-charcoal">Gallery Management</h1>
         <p className="text-sm text-warm-gray font-body mt-1">Upload and manage gallery images</p>
       </div>
+
+      {!firebaseReady && (
+        <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-gold shrink-0" />
+          <p className="text-sm text-charcoal font-body">Firebase not connected. Set up Firestore and Storage to manage gallery images.</p>
+        </div>
+      )}
 
       {/* Upload Section */}
       <Card className="mb-8">
@@ -120,7 +130,7 @@ export default function AdminGallery() {
               </Select>
             </div>
             <div className="flex items-end">
-              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading || !newTitle || !newCategory} variant="default" className="w-full gap-2">
+              <Button onClick={() => fileInputRef.current?.click()} disabled={isUploading || !newTitle || !newCategory || !firebaseReady} variant="default" className="w-full gap-2">
                 {isUploading ? <div className="w-4 h-4 border-2 border-charcoal/30 border-t-charcoal rounded-full animate-spin" /> : <Upload className="w-4 h-4" />}
                 {isUploading ? "Uploading..." : "Upload Image"}
               </Button>
@@ -134,7 +144,7 @@ export default function AdminGallery() {
       {images.length === 0 ? (
         <div className="text-center py-16">
           <ImageIcon className="w-12 h-12 text-border-light mx-auto mb-4" />
-          <p className="text-warm-gray font-body">No images uploaded yet</p>
+          <p className="text-warm-gray font-body">{firebaseReady ? "No images uploaded yet" : "Connect Firebase to manage images"}</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
