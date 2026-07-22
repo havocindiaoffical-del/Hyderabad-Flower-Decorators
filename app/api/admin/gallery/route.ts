@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getGalleryImages, addGalleryImage, toggleFeatured, deleteGalleryImage } from "@/lib/db-helpers";
-import { uploadGalleryImage, deleteImage } from "@/lib/firebase-storage";
 
 export async function GET() {
   try {
@@ -12,22 +11,20 @@ export async function GET() {
   }
 }
 
+// POST now accepts { url, title, category } — the image is already uploaded to Firebase Storage by the client
 export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const title = (formData.get("title") as string)?.trim() || "";
-    const category = (formData.get("category") as string)?.trim() || "";
-    const file = formData.get("file") as File | null;
+    const body = await request.json();
+    const { url, title, category } = body;
 
-    if (!title || !category || !file) {
-      return NextResponse.json({ error: "title, category, and file required" }, { status: 400 });
+    if (!url || !title || !category) {
+      return NextResponse.json({ error: "url, title, and category required" }, { status: 400 });
     }
 
-    const url = await uploadGalleryImage(file);
     const id = await addGalleryImage({ url, title, category, featured: false });
     return NextResponse.json({ success: true, id, url });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "Failed to upload image";
+    const message = err instanceof Error ? err.message : "Failed to add gallery image";
     return NextResponse.json({ error: message }, { status: 500 });
   }
 }
@@ -46,13 +43,13 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
+// DELETE only removes from DB — the client already deleted the file from Firebase Storage
 export async function DELETE(request: NextRequest) {
   try {
-    const { id, url } = await request.json();
+    const { id } = await request.json();
     if (!id) {
       return NextResponse.json({ error: "id required" }, { status: 400 });
     }
-    try { await deleteImage(url); } catch { /* storage delete may fail */ }
     await deleteGalleryImage(id);
     return NextResponse.json({ success: true });
   } catch (err: unknown) {

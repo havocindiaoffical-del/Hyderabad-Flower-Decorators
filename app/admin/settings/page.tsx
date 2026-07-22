@@ -2,9 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { Save, Loader2, AlertCircle, Eye, EyeOff, Mail, ShieldCheck, Zap } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { useAdminTheme } from "@/components/providers/AdminTheme";
 import { auth } from "@/lib/firebase";
 
 interface SettingsForm {
@@ -54,6 +52,7 @@ const defaultSettings: SettingsForm = {
 };
 
 export default function AdminSettings() {
+  const { theme } = useAdminTheme();
   const [settings, setSettings] = useState<SettingsForm>(defaultSettings);
   const [brevo, setBrevo] = useState<BrevoForm>({
     api_key: "",
@@ -97,8 +96,8 @@ export default function AdminSettings() {
           sunday_hours: hours.sunday || "9:00 AM - 9:00 PM",
         });
         setBrevo({
-          api_key: "", // Keep empty — we only have the masked version
-          api_key_display: s.brevo_api_key || "", // Masked version from API
+          api_key: "",
+          api_key_display: s.brevo_api_key || "",
           sender_email: s.brevo_sender_email || "",
           is_editing_key: false,
           show_key: false,
@@ -161,7 +160,6 @@ export default function AdminSettings() {
         }),
       });
 
-      // Re-fetch to get updated masked key
       await fetchSettings();
       setBrevo((prev) => ({ ...prev, is_editing_key: false }));
       alert("Settings saved successfully!");
@@ -185,8 +183,6 @@ export default function AdminSettings() {
       const idToken = await currentUser.getIdToken();
 
       const apiKey = brevo.is_editing_key ? brevo.api_key : "";
-      // If not editing, we don't have the full key locally — read from DB
-      // The test endpoint can use the saved key from DB if api_key is empty
       const res = await fetch("/api/admin/settings/test-brevo", {
         method: "POST",
         headers: {
@@ -208,215 +204,268 @@ export default function AdminSettings() {
     }
   };
 
+  // Card style helper
+  const cardStyle = { background: theme.bgCard, border: `1px solid ${theme.borderColor}` };
+  const inputStyle = { background: theme.bgInput, color: theme.textPrimary, borderColor: theme.borderColor };
+
   if (!isLoaded) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4" style={{ background: theme.bgPrimary }}>
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-warm-gray font-body">Loading settings...</p>
+        <p className="text-sm font-body" style={{ color: theme.textSecondary }}>Loading settings...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8" style={{ background: theme.bgPrimary }}>
       <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-heading font-bold text-charcoal">Settings</h1>
-          <p className="text-sm text-warm-gray font-body mt-1">Manage your business information, preferences, and email configuration</p>
+          <h1 className="text-2xl font-heading font-bold" style={{ color: theme.textPrimary }}>Settings</h1>
+          <p className="text-sm font-body mt-1" style={{ color: theme.textSecondary }}>Manage your business information, preferences, and email configuration</p>
         </div>
-        <Button onClick={handleSave} disabled={isSaving || !dbReady} variant="default" className="gap-2">
+        <button
+          onClick={handleSave}
+          disabled={isSaving || !dbReady}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-body font-semibold transition-colors disabled:opacity-50"
+          style={{ background: "#B8935F", color: "#1A1A1A" }}
+        >
           {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
           Save Changes
-        </Button>
+        </button>
       </div>
 
       {!dbReady && (
-        <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
+        <div className="mb-6 p-4 rounded-xl flex items-center gap-3" style={{ background: "rgba(184,147,95,0.05)", border: "1px solid rgba(184,147,95,0.2)" }}>
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Database connection issue. Check your database connection to save settings.</p>
+          <p className="text-sm font-body" style={{ color: theme.textPrimary }}>Database connection issue. Check your database connection to save settings.</p>
         </div>
       )}
 
       <div className="space-y-6">
 
         {/* ─── Email Configuration (Brevo) ─────────────── */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Mail className="w-5 h-5 text-gold" />
-              <CardTitle>Email Configuration</CardTitle>
+        <div className="rounded-2xl p-6" style={cardStyle}>
+          <div className="flex items-center gap-2 mb-1">
+            <Mail className="w-5 h-5 text-gold" />
+            <h3 className="font-heading font-semibold" style={{ color: theme.textPrimary }}>Email Configuration</h3>
+          </div>
+          <p className="text-sm font-body mt-1 mb-5" style={{ color: theme.textSecondary }}>
+            Configure Brevo (formerly Sendinblue) to send booking confirmation emails to customers and notifications to you.
+          </p>
+
+          <div className="space-y-5">
+            {/* Security notice */}
+            <div className="flex items-start gap-3 p-3 rounded-lg" style={{ background: "rgba(91,117,83,0.05)", border: "1px solid rgba(91,117,83,0.15)" }}>
+              <ShieldCheck className="w-5 h-5 text-sage shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-body" style={{ color: theme.textPrimary }}>
+                  Your API key is stored securely in the database and is never exposed in the source code or visible to non-admin users.
+                  When displayed here, only the last 4 characters are shown.
+                </p>
+              </div>
             </div>
-            <p className="text-sm text-warm-gray font-body mt-1">
-              Configure Brevo (formerly Sendinblue) to send booking confirmation emails to customers and notifications to you.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-5">
-              {/* Security notice */}
-              <div className="flex items-start gap-3 p-3 rounded-lg bg-sage/5 border border-sage/15">
-                <ShieldCheck className="w-5 h-5 text-sage shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm text-charcoal font-body">
-                    Your API key is stored securely in the database and is never exposed in the source code or visible to non-admin users.
-                    When displayed here, only the last 4 characters are shown.
+
+            {/* Brevo API Key */}
+            <div>
+              <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>Brevo API Key</label>
+              {brevo.is_editing_key ? (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <div className="flex-1 relative">
+                      <input
+                        type={brevo.show_key ? "text" : "password"}
+                        value={brevo.api_key}
+                        onChange={(e) => setBrevo((prev) => ({ ...prev, api_key: e.target.value }))}
+                        placeholder="Paste your Brevo API key here"
+                        className="w-full h-11 px-4 rounded-xl border text-sm font-body focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all"
+                        style={inputStyle}
+                        autoComplete="off"
+                      />
+                      <button
+                        onClick={() => setBrevo((prev) => ({ ...prev, show_key: !prev.show_key }))}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 transition-colors"
+                        style={{ color: theme.textSecondary }}
+                        type="button"
+                      >
+                        {brevo.show_key ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => setBrevo((prev) => ({ ...prev, is_editing_key: false, api_key: "" }))}
+                      className="h-11 px-4 rounded-xl text-sm font-body border transition-colors"
+                      style={{ background: theme.bgHover, color: theme.textSecondary, borderColor: theme.borderColor }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                  <p className="text-xs font-body" style={{ color: theme.textMuted }}>
+                    Find your API key at <span className="text-gold">brevo.com → SMTP &amp; API → API Keys</span>. Create a new key with <strong>Transactional Email</strong> permissions.
                   </p>
                 </div>
-              </div>
-
-              {/* Brevo API Key */}
-              <div>
-                <label className="block label-uppercase text-stone mb-2">Brevo API Key</label>
-                {brevo.is_editing_key ? (
-                  <div className="space-y-3">
-                    <div className="flex gap-2">
-                      <div className="flex-1 relative">
-                        <input
-                          type={brevo.show_key ? "text" : "password"}
-                          value={brevo.api_key}
-                          onChange={(e) => setBrevo((prev) => ({ ...prev, api_key: e.target.value }))}
-                          placeholder="Paste your Brevo API key here"
-                          className="w-full h-11 px-4 rounded-lg border border-border-light bg-ivory text-charcoal font-body text-sm focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold/30 transition-all"
-                          autoComplete="off"
-                        />
-                        <button
-                          onClick={() => setBrevo((prev) => ({ ...prev, show_key: !prev.show_key }))}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-stone hover:text-charcoal transition-colors"
-                          type="button"
-                        >
-                          {brevo.show_key ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setBrevo((prev) => ({ ...prev, is_editing_key: false, api_key: "" }))}
-                      >
-                        Cancel
-                      </Button>
-                    </div>
-                    <p className="text-xs text-warm-gray font-body">
-                      Find your API key at <span className="text-gold">brevo.com → SMTP &amp; API → API Keys</span>. Create a new key with <strong>Transactional Email</strong> permissions.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1 h-11 px-4 rounded-lg border border-border-light bg-ivory/50 text-stone font-body text-sm flex items-center">
-                      {brevo.api_key_display ? (
-                        <span className="text-charcoal">{brevo.api_key_display}</span>
-                      ) : (
-                        <span className="text-warm-gray italic">No API key configured — click "Change" to add one</span>
-                      )}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setBrevo((prev) => ({ ...prev, is_editing_key: true, api_key: "", show_key: false }))}
-                    >
-                      Change
-                    </Button>
-                  </div>
-                )}
-              </div>
-
-              {/* Sender Email */}
-              <div>
-                <label className="block label-uppercase text-stone mb-2">Sender Email</label>
-                <Input
-                  label=""
-                  value={brevo.sender_email}
-                  onChange={(e) => setBrevo((prev) => ({ ...prev, sender_email: e.target.value }))}
-                  placeholder="e.g. hydflowerdecorators@gmail.com"
-                  type="email"
-                />
-                <p className="text-xs text-warm-gray font-body mt-2">
-                  This must be a <strong>verified sender email</strong> in your Brevo dashboard. Go to <span className="text-gold">brevo.com → Settings → Senders</span> to verify.
-                </p>
-              </div>
-
-              {/* Test Connection */}
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleTestBrevo}
-                  disabled={isTesting || (!brevo.api_key_display && !brevo.api_key)}
-                  className="gap-2"
-                >
-                  {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-                  Test Connection
-                </Button>
-                {testResult && (
-                  <div className={`flex items-center gap-2 text-sm font-body ${testResult.success ? "text-sage" : "text-red-500"}`}>
-                    <span>{testResult.message}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Setup Steps */}
-              <div className="pt-3 border-t border-border-light">
-                <p className="text-xs text-warm-gray font-body leading-relaxed">
-                  <strong className="text-charcoal">Setup Steps:</strong><br />
-                  1. Create a free Brevo account at <span className="text-gold">brevo.com</span><br />
-                  2. Verify your sender email in Brevo dashboard → Settings → Senders<br />
-                  3. Generate an API key in Brevo → SMTP & API → API Keys (Transactional Email scope)<br />
-                  4. Paste the API key and enter your verified sender email above<br />
-                  5. Click "Test Connection" to verify everything works<br />
-                  6. Save settings
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader><CardTitle>Business Information</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Input label="Business Name" value={settings.business_name} onChange={(e) => handleChange("business_name", e.target.value)} />
-              <Input label="Phone Number" value={settings.phone} onChange={(e) => handleChange("phone", e.target.value)} />
-              <Input label="Email Address" value={settings.email} onChange={(e) => handleChange("email", e.target.value)} type="email" />
-              <Input label="WhatsApp Number" value={settings.whatsapp} onChange={(e) => handleChange("whatsapp", e.target.value)} />
-              <div className="sm:col-span-2"><Input label="Address" value={settings.address} onChange={(e) => handleChange("address", e.target.value)} /></div>
-              <div>
-                <label className="block label-uppercase text-stone mb-2">Brand Color</label>
+              ) : (
                 <div className="flex items-center gap-3">
-                  <input type="color" value={settings.brand_color} onChange={(e) => handleChange("brand_color", e.target.value)} className="w-11 h-11 rounded-lg border border-border-light cursor-pointer" />
-                  <Input value={settings.brand_color} onChange={(e) => handleChange("brand_color", e.target.value)} className="flex-1" />
+                  <div className="flex-1 h-11 px-4 rounded-xl border font-body text-sm flex items-center" style={{ background: theme.bgHover, borderColor: theme.borderColor }}>
+                    {brevo.api_key_display ? (
+                      <span style={{ color: theme.textPrimary }}>{brevo.api_key_display}</span>
+                    ) : (
+                      <span className="italic" style={{ color: theme.textMuted }}>No API key configured — click "Change" to add one</span>
+                    )}
+                  </div>
+                  <button
+                    onClick={() => setBrevo((prev) => ({ ...prev, is_editing_key: true, api_key: "", show_key: false }))}
+                    className="h-11 px-4 rounded-xl text-sm font-body border transition-colors"
+                    style={{ background: theme.bgHover, color: theme.textSecondary, borderColor: theme.borderColor }}
+                  >
+                    Change
+                  </button>
                 </div>
+              )}
+            </div>
+
+            {/* Sender Email */}
+            <div>
+              <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>Sender Email</label>
+              <input
+                type="email"
+                value={brevo.sender_email}
+                onChange={(e) => setBrevo((prev) => ({ ...prev, sender_email: e.target.value }))}
+                placeholder="e.g. hydflowerdecorators@gmail.com"
+                className="flex h-11 w-full rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold transition-all"
+                style={inputStyle}
+              />
+              <p className="text-xs font-body mt-2" style={{ color: theme.textMuted }}>
+                This must be a <strong>verified sender email</strong> in your Brevo dashboard. Go to <span className="text-gold">brevo.com → Settings → Senders</span> to verify.
+              </p>
+            </div>
+
+            {/* Test Connection */}
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={handleTestBrevo}
+                disabled={isTesting || (!brevo.api_key_display && !brevo.api_key)}
+                className="flex items-center gap-2 h-11 px-4 rounded-xl text-sm font-body border transition-colors disabled:opacity-50"
+                style={{ background: theme.bgHover, color: theme.textSecondary, borderColor: theme.borderColor }}
+              >
+                {isTesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                Test Connection
+              </button>
+              {testResult && (
+                <div className={`flex items-center gap-2 text-sm font-body ${testResult.success ? "text-sage" : "text-red-500"}`}>
+                  <span>{testResult.message}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Setup Steps */}
+            <div className="pt-3" style={{ borderTop: `1px solid ${theme.borderColor}` }}>
+              <p className="text-xs font-body leading-relaxed" style={{ color: theme.textMuted }}>
+                <strong style={{ color: theme.textPrimary }}>Setup Steps:</strong><br />
+                1. Create a free Brevo account at <span className="text-gold">brevo.com</span><br />
+                2. Verify your sender email in Brevo dashboard → Settings → Senders<br />
+                3. Generate an API key in Brevo → SMTP & API → API Keys (Transactional Email scope)<br />
+                4. Paste the API key and enter your verified sender email above<br />
+                5. Click "Test Connection" to verify everything works<br />
+                6. Save settings
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Business Information */}
+        <div className="rounded-2xl p-6" style={cardStyle}>
+          <h3 className="font-heading font-semibold mb-5" style={{ color: theme.textPrimary }}>Business Information</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {[
+              { key: "business_name", label: "Business Name" },
+              { key: "phone", label: "Phone Number" },
+              { key: "email", label: "Email Address", type: "email" },
+              { key: "whatsapp", label: "WhatsApp Number" },
+            ].map(({ key, label, type }) => (
+              <div key={key}>
+                <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>{label}</label>
+                <input
+                  type={type || "text"}
+                  value={settings[key as keyof SettingsForm]}
+                  onChange={(e) => handleChange(key as keyof SettingsForm, e.target.value)}
+                  className="flex h-11 w-full rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold transition-all"
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+            <div className="sm:col-span-2">
+              <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>Address</label>
+              <input
+                value={settings.address}
+                onChange={(e) => handleChange("address", e.target.value)}
+                className="flex h-11 w-full rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold transition-all"
+                style={inputStyle}
+              />
+            </div>
+            <div>
+              <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>Brand Color</label>
+              <div className="flex items-center gap-3">
+                <input type="color" value={settings.brand_color} onChange={(e) => handleChange("brand_color", e.target.value)} className="w-11 h-11 rounded-lg border cursor-pointer" style={{ borderColor: theme.borderColor }} />
+                <input
+                  value={settings.brand_color}
+                  onChange={(e) => handleChange("brand_color", e.target.value)}
+                  className="flex h-11 rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold flex-1 transition-all"
+                  style={inputStyle}
+                />
               </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle>Social Links</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-              <Input label="Instagram" value={settings.instagram} onChange={(e) => handleChange("instagram", e.target.value)} placeholder="https://instagram.com/..." />
-              <Input label="Facebook" value={settings.facebook} onChange={(e) => handleChange("facebook", e.target.value)} placeholder="https://facebook.com/..." />
-              <Input label="YouTube" value={settings.youtube} onChange={(e) => handleChange("youtube", e.target.value)} placeholder="https://youtube.com/..." />
-            </div>
-          </CardContent>
-        </Card>
+        {/* Social Links */}
+        <div className="rounded-2xl p-6" style={cardStyle}>
+          <h3 className="font-heading font-semibold mb-5" style={{ color: theme.textPrimary }}>Social Links</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {[
+              { key: "instagram", label: "Instagram", placeholder: "https://instagram.com/..." },
+              { key: "facebook", label: "Facebook", placeholder: "https://facebook.com/..." },
+              { key: "youtube", label: "YouTube", placeholder: "https://youtube.com/..." },
+            ].map(({ key, label, placeholder }) => (
+              <div key={key}>
+                <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>{label}</label>
+                <input
+                  value={settings[key as keyof SettingsForm]}
+                  onChange={(e) => handleChange(key as keyof SettingsForm, e.target.value)}
+                  placeholder={placeholder}
+                  className="flex h-11 w-full rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold transition-all"
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader><CardTitle>Business Hours</CardTitle></CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {[
-                { key: "monday_hours" as const, label: "Monday" },
-                { key: "tuesday_hours" as const, label: "Tuesday" },
-                { key: "wednesday_hours" as const, label: "Wednesday" },
-                { key: "thursday_hours" as const, label: "Thursday" },
-                { key: "friday_hours" as const, label: "Friday" },
-                { key: "saturday_hours" as const, label: "Saturday" },
-                { key: "sunday_hours" as const, label: "Sunday" },
-              ].map(({ key, label }) => (
-                <Input key={key} label={label} value={settings[key]} onChange={(e) => handleChange(key, e.target.value)} placeholder="9:00 AM - 9:00 PM" />
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Business Hours */}
+        <div className="rounded-2xl p-6" style={cardStyle}>
+          <h3 className="font-heading font-semibold mb-5" style={{ color: theme.textPrimary }}>Business Hours</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { key: "monday_hours", label: "Monday" },
+              { key: "tuesday_hours", label: "Tuesday" },
+              { key: "wednesday_hours", label: "Wednesday" },
+              { key: "thursday_hours", label: "Thursday" },
+              { key: "friday_hours", label: "Friday" },
+              { key: "saturday_hours", label: "Saturday" },
+              { key: "sunday_hours", label: "Sunday" },
+            ].map(({ key, label }) => (
+              <div key={key}>
+                <label className="block label-uppercase mb-2" style={{ color: theme.textSecondary }}>{label}</label>
+                <input
+                  value={settings[key as keyof SettingsForm]}
+                  onChange={(e) => handleChange(key as keyof SettingsForm, e.target.value)}
+                  placeholder="9:00 AM - 9:00 PM"
+                  className="flex h-11 w-full rounded-xl border px-4 text-sm font-body focus:outline-none focus:border-gold transition-all"
+                  style={inputStyle}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
