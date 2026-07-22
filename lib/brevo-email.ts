@@ -11,10 +11,6 @@ const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 const BUSINESS_NAME = "Hyderabad Flower Decorators";
 const OWNER_EMAIL = "nanid9404@gmail.com";
 
-// ─── Env var fallbacks (set these on Netlify if DB config is empty) ───
-const ENV_BREVO_API_KEY = process.env.BREVO_API_KEY || "";
-const ENV_BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "hydflowerdecorators@gmail.com";
-
 function maskApiKey(key: string): string {
   if (!key || key.length < 8) return key ? "****" : "";
   return "****" + key.slice(-4);
@@ -24,9 +20,13 @@ async function getEffectiveBrevoConfig(): Promise<{ apiKey: string; senderEmail:
   // Primary: read from DB (admin can change via settings page)
   const dbConfig = await getBrevoConfig();
 
-  // Fallback: use env vars if DB config is empty
-  const apiKey = dbConfig.apiKey || ENV_BREVO_API_KEY;
-  const senderEmail = dbConfig.senderEmail || ENV_BREVO_SENDER_EMAIL;
+  // Fallback: read env vars at RUNTIME (not module-import time)
+  // This is critical — Netlify env vars are only available at runtime, not during build
+  const envApiKey = process.env.BREVO_API_KEY || "";
+  const envSenderEmail = process.env.BREVO_SENDER_EMAIL || "hydflowerdecorators@gmail.com";
+
+  const apiKey = dbConfig.apiKey || envApiKey;
+  const senderEmail = dbConfig.senderEmail || envSenderEmail;
 
   return { apiKey, senderEmail };
 }
@@ -100,7 +100,9 @@ export async function sendBookingNotifications(bookingData: {
     };
   }
 
-  if (config.apiKey === ENV_BREVO_API_KEY && ENV_BREVO_API_KEY) {
+  // Check if the effective API key came from env vars (not DB)
+  const envApiKey = process.env.BREVO_API_KEY || "";
+  if (config.apiKey === envApiKey && envApiKey) {
     configSource = "env";
   }
 

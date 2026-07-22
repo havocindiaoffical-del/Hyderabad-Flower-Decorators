@@ -107,10 +107,30 @@ export default function BookingPageContent() {
     if (!validate()) return;
     setSubmitting(true);
     try {
+      // Upload images to Firebase Storage on the CLIENT side first
+      // (Firebase Storage requires auth context which only exists in browser)
+      const imageUrls: string[] = [];
+      if (fd.images.length > 0) {
+        try {
+          const { uploadBookingImage } = await import("@/lib/firebase-storage");
+          for (const img of fd.images) {
+            try {
+              const url = await uploadBookingImage(img);
+              imageUrls.push(url);
+            } catch {
+              // Individual image upload failed, skip it
+            }
+          }
+        } catch {
+          // Firebase not available, skip image uploads
+        }
+      }
+
       const sd = new FormData();
       Object.entries(fd).forEach(([k, v]) => { if (k !== "images" && v) sd.append(k, v); });
       if (user?.uid) sd.append("user_uid", user.uid);
-      fd.images.forEach((img, i) => sd.append(`image_${i}`, img));
+      // Send pre-uploaded image URLs instead of raw files
+      imageUrls.forEach((url, i) => sd.append(`image_url_${i}`, url));
       const res = await fetch("/api/booking", { method: "POST", body: sd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");

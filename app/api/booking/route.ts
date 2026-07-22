@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/db-helpers";
-import { uploadBookingImage } from "@/lib/firebase-storage";
 import { sendBookingNotifications } from "@/lib/brevo-email";
 
 export async function POST(request: NextRequest) {
@@ -46,23 +45,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Upload images to Firebase Storage
+    // Collect pre-uploaded image URLs from client-side Firebase Storage uploads
     const imageUrls: string[] = [];
-    const imageEntries = Array.from(formData.entries()).filter(([key]) =>
-      key.startsWith("image_")
+    const imageUrlEntries = Array.from(formData.entries()).filter(([key]) =>
+      key.startsWith("image_url_")
     );
+    for (const [, value] of imageUrlEntries) {
+      const url = (value as string).trim();
+      if (url) imageUrls.push(url);
+    }
 
-    for (const [, value] of imageEntries) {
+    // Also handle raw file uploads (legacy support — for cases where client upload fails)
+    const imageFileEntries = Array.from(formData.entries()).filter(([key]) =>
+      key.startsWith("image_") && !key.startsWith("image_url_")
+    );
+    for (const [, value] of imageFileEntries) {
       if (value instanceof File) {
         if (value.size > 5 * 1024 * 1024) continue;
         if (!["image/jpeg", "image/png", "image/webp"].includes(value.type)) continue;
-
-        try {
-          const url = await uploadBookingImage(value);
-          imageUrls.push(url);
-        } catch {
-          // Image upload failed, continue without it
-        }
+        // Skip raw file uploads on server side — they should be uploaded via client
+        // Firebase Storage requires auth context which doesn't exist in API routes
       }
     }
 
