@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import {
   CalendarCheck, Clock, CheckCircle2, XCircle,
-  AlertCircle, ArrowRight, Ticket, Sparkles, Bell, BellOff, Users
+  AlertCircle, ArrowRight, Ticket, Sparkles, Bell, BellOff, Users, X
 } from "lucide-react";
 import { useAdminTheme } from "@/components/providers/AdminTheme";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
@@ -31,7 +31,17 @@ interface StatCard {
   bgColor: string;
 }
 
+interface ToastNotification {
+  id: string;
+  message: string;
+  customerName: string;
+  eventType: string;
+  ticketId: string;
+  timestamp: number;
+}
+
 const NOTIFICATION_KEY = "hfd_notifications_enabled";
+const POLL_INTERVAL = 10000; // 10 seconds
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState<StatCard[]>([]);
@@ -39,27 +49,47 @@ export default function AdminDashboard() {
   const [dbReady, setDbReady] = useState<boolean | null>(null);
   const [dbError, setDbError] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [lastBookingCount, setLastBookingCount] = useState(0);
+  const [toastNotifications, setToastNotifications] = useState<ToastNotification[]>([]);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  // Refs to avoid stale closures in polling interval
+  const knownTicketIdsRef = useRef<Set<string>>(new Set());
+  const notificationsEnabledRef = useRef(false);
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isFirstFetchRef = useRef(true);
+  const mountedRef = useRef(true);
+  const toastTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
-  // Check dark mode
+  // Keep ref synced with state
+  useEffect(() => {
+    notificationsEnabledRef.current = notificationsEnabled;
+  }, [notificationsEnabled]);
+
+  // Check notification preference on mount
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("hfd_admin_dark");
+      const saved = localStorage.getItem(NOTIFICATION_KEY);
+      if (saved === "true") {
+        setNotificationsEnabled(true);
+      }
     } catch {}
   }, []);
 
-  // Check notification preference
+  // Cleanup on unmount
   useEffect(() => {
-    try {
-      setNotificationsEnabled(localStorage.getItem(NOTIFICATION_KEY) === "true");
-    } catch {}
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      if (pollingRef.current) clearInterval(pollingRef.current);
+      // Clear all toast timeouts
+      for (const [, timeout] of toastTimeoutsRef.current) {
+        clearTimeout(timeout);
+      }
+    };
   }, []);
 
   const toggleNotifications = async () => {
     if (!notificationsEnabled) {
-      // Request browser notification permission
       if ("Notification" in window) {
         const permission = await Notification.requestPermission();
         if (permission === "granted") {
@@ -77,6 +107,16 @@ export default function AdminDashboard() {
     }
   };
 
+  const dismissToast = useCallback((id: string) => {
+    // Clear the auto-dismiss timeout
+    const existingTimeout = toastTimeoutsRef.current.get(id);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      toastTimeoutsRef.current.delete(id);
+    }
+    setToastNotifications(prev => prev.filter(n => n.id !== id));
+  }, []);
+
   const buildStats = (c: { upcoming: number; today: number; completed: number; cancelled: number; pending: number }): StatCard[] => [
     { title: "Upcoming Events", value: String(c.upcoming), icon: CalendarCheck, color: "text-blue-500", bgColor: "bg-blue-500/10" },
     { title: "Today's Events", value: String(c.today), icon: Clock, color: "text-sage", bgColor: "bg-sage/10" },
@@ -89,37 +129,125 @@ export default function AdminDashboard() {
   const fetchDashboard = useCallback(async () => {
     try {
       const res = await fetch("/api/admin/stats");
+      if (!res.ok) {
+        if (mountedRef.current) {
+          setDbReady(false);
+          setDbError("Server error — could not fetch stats");
+        }
+        return;
+      }
       const data = await res.json();
-      if (data.error) { setDbReady(false); setDbError(data.error); return; }
+      if (data.error) {
+        if (mountedRef.current) {
+          setDbReady(false);
+          setDbError(data.error);
+        }
+        return;
+      }
+
+      if (!mountedRef.current) return;
+
       setStats(buildStats(data.counts));
       setRecentBookings(data.recentBookings || []);
       setDbReady(true);
+      setLastUpdated(new Date());
 
-      // Push notification for new bookings
-      const total = data.counts.upcoming + data.counts.today + data.counts.completed + data.counts.pending + data.counts.cancelled;
-      if (notificationsEnabled && lastBookingCount > 0 && total > lastBookingCount) {
-        const newCount = total - lastBookingCount;
-        try {
-          new Notification("HFD — New Booking!", {
-            body: `${newCount} new booking(s) received. Check the dashboard.`,
-            icon: "/favicon.ico",
+      // Get all ticket IDs from the response
+      const fetchedAllTicketIds: string[] = data.allTicketIds || [];
+
+      // Detect new bookings by comparing with known set
+      // Only after the first fetch establishes our baseline
+      if (!isFirstFetchRef.current) {
+        const newBookingIds: string[] = [];
+        for (const tid of fetchedAllTicketIds) {
+          if (!knownTicketIdsRef.current.has(tid)) {
+            newBookingIds.push(tid);
+          }
+        }
+
+        if (newBookingIds.length > 0) {
+          // Find the full booking data for new bookings
+          const recentList = data.recentBookings || [];
+          const newBookings: BookingData[] = recentList.filter((b: BookingData) =>
+            newBookingIds.includes(b.ticket_id)
+          );
+
+          // If some new bookings aren't in the recent list, we still show count
+          const inRecentCount = newBookings.length;
+          const totalCount = newBookingIds.length;
+          const unseenCount = totalCount - inRecentCount;
+
+          // Browser push notification
+          if (notificationsEnabledRef.current && "Notification" in window && Notification.permission === "granted") {
+            try {
+              const notificationBody = totalCount === 1
+                ? `New booking from ${newBookings[0]?.full_name || "a customer"} — ${newBookings[0]?.event_type?.replace(/-/g, " ") || "event"}`
+                : `${totalCount} new booking(s) received!`;
+              new Notification("HFD — New Booking!", {
+                body: notificationBody,
+                icon: "/favicon.ico",
+                tag: "hfd-new-booking",
+              });
+            } catch {}
+          }
+
+          // In-page toast notifications
+          const toasts: ToastNotification[] = newBookings.map((b: BookingData) => ({
+            id: b.ticket_id,
+            message: `New booking: ${b.full_name} — ${b.event_type.replace(/-/g, " ")}`,
+            customerName: b.full_name,
+            eventType: b.event_type.replace(/-/g, " "),
+            ticketId: b.ticket_id,
+            timestamp: Date.now(),
+          }));
+
+          // If there are unseen bookings not in recent list, add a summary toast
+          if (unseenCount > 0) {
+            toasts.push({
+              id: `unseen-${Date.now()}`,
+              message: `${unseenCount} additional new booking(s) received`,
+              customerName: "",
+              eventType: "",
+              ticketId: "",
+              timestamp: Date.now(),
+            });
+          }
+
+          setToastNotifications(prev => [...toasts, ...prev].slice(0, 10));
+
+          // Auto-dismiss each toast after 15 seconds
+          toasts.forEach(t => {
+            const timeout = setTimeout(() => {
+              if (mountedRef.current) dismissToast(t.id);
+            }, 15000);
+            toastTimeoutsRef.current.set(t.id, timeout);
           });
-        } catch {}
+        }
       }
-      setLastBookingCount(total);
+
+      // Update known ticket IDs set with ALL fetched IDs
+      knownTicketIdsRef.current = new Set(fetchedAllTicketIds);
+      isFirstFetchRef.current = false;
     } catch {
-      setDbReady(false);
-      setDbError("Network error — could not reach server");
+      if (mountedRef.current) {
+        setDbReady(false);
+        setDbError("Network error — could not reach server");
+      }
     }
-  }, [notificationsEnabled, lastBookingCount]);
+  }, [dismissToast]);
 
-  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
+  // Initial fetch
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
-  // Poll for new bookings every 30 seconds
+  // Poll every 10 seconds
   useEffect(() => {
     if (pollingRef.current) clearInterval(pollingRef.current);
-    pollingRef.current = setInterval(fetchDashboard, 30000);
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
+    pollingRef.current = setInterval(fetchDashboard, POLL_INTERVAL);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
   }, [fetchDashboard]);
 
   const retry = () => {
@@ -139,23 +267,80 @@ export default function AdminDashboard() {
   const hoverBg = theme.bgHover;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8" style={{ background: bgPrimary }}>
-      <div className="mb-8 flex items-start justify-between">
+    <div className="p-4 sm:p-6 lg:p-8 relative" style={{ background: bgPrimary }}>
+      {/* Toast notifications container */}
+      {toastNotifications.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full">
+          {toastNotifications.map(n => (
+            <div
+              key={n.id}
+              className="flex items-start gap-3 p-4 rounded-xl shadow-lg animate-slide-in-right"
+              style={{
+                background: theme.bgCard,
+                border: "1px solid rgba(184,147,95,0.4)",
+                color: textPrimary,
+              }}
+            >
+              <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: "rgba(184,147,95,0.15)" }}>
+                <Bell className="w-5 h-5" style={{ color: "#B8935F" }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-body font-medium" style={{ color: textPrimary }}>{n.message}</p>
+                {n.ticketId && (
+                  <p className="text-xs font-mono mt-1" style={{ color: "#B8935F" }}>{n.ticketId}</p>
+                )}
+                <p className="text-[10px] font-body mt-1" style={{ color: textMuted }}>
+                  {new Date(n.timestamp).toLocaleTimeString()}
+                </p>
+              </div>
+              <button
+                onClick={() => dismissToast(n.id)}
+                className="shrink-0 w-6 h-6 rounded-lg flex items-center justify-center transition-opacity hover:opacity-80"
+                style={{ background: hoverBg, color: textMuted }}
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-8 flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-2xl font-heading font-bold" style={{ color: textPrimary }}>Dashboard</h1>
           <p className="text-sm font-body mt-1" style={{ color: textSecondary }}>Welcome back! Here&apos;s an overview of your bookings.</p>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="inline-flex items-center gap-1 text-[11px] font-body px-2 py-0.5 rounded-full" style={{ background: "rgba(91,117,83,0.1)", color: "#5B7553" }}>
+              <Clock className="w-3 h-3" />
+              Auto-refreshes every 10s
+            </span>
+            {lastUpdated && (
+              <span className="text-[10px] font-body" style={{ color: textMuted }}>
+                Last: {lastUpdated.toLocaleTimeString()}
+              </span>
+            )}
+          </div>
         </div>
         <button
           onClick={toggleNotifications}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-[12px] font-body transition-colors ${notificationsEnabled ? "bg-sage/10 text-sage" : "bg-cream text-stone"}`}
-          style={{ background: notificationsEnabled ? "rgba(91,117,83,0.1)" : hoverBg, color: notificationsEnabled ? "#5B7553" : textSecondary }}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-[12px] font-body transition-colors shrink-0"
+          style={{
+            background: notificationsEnabled ? "rgba(91,117,83,0.1)" : hoverBg,
+            color: notificationsEnabled ? "#5B7553" : textSecondary,
+            border: `1px solid ${notificationsEnabled ? "rgba(91,117,83,0.2)" : borderColor}`,
+          }}
         >
-          {notificationsEnabled ? <><Bell className="w-4 h-4" />Notifications On</> : <><BellOff className="w-4 h-4" />Enable Notifications</>}
+          {notificationsEnabled
+            ? <><Bell className="w-4 h-4" />Notifications On</>
+            : <><BellOff className="w-4 h-4" />Enable Notifications</>
+          }
         </button>
       </div>
 
+      {/* DB error */}
       {dbReady === false && (
-        <div className="mb-8 rounded-2xl p-6" style={{ background: bgCard, border: `2px solid rgba(184,147,95,0.3)` }}>
+        <div className="mb-8 rounded-2xl p-6" style={{ background: bgCard, border: "2px solid rgba(184,147,95,0.3)" }}>
           <div className="flex items-start gap-4">
             <AlertCircle className="w-6 h-6 text-gold shrink-0 mt-1" />
             <div className="flex-1">

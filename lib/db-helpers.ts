@@ -162,6 +162,18 @@ export async function getRecentBookings(count: number): Promise<BookingData[]> {
   return result.map(rowToBooking);
 }
 
+export async function getAllTicketIds(): Promise<string[]> {
+  const result = await getDb().select({ ticketId: bookings.ticketId }).from(bookings);
+  return result.map(r => r.ticketId);
+}
+
+export async function getNewBookingsSince(sinceDate: Date): Promise<BookingData[]> {
+  const result = await getDb().select().from(bookings).where(
+    gte(bookings.createdAt, sinceDate)
+  ).orderBy(desc(bookings.createdAt));
+  return result.map(rowToBooking);
+}
+
 export async function updateBookingStatus(id: string, status: string, adminNotes?: string): Promise<void> {
   // First, get the current status to save as previous_status
   const current = await getDb().select({ status: bookings.status }).from(bookings).where(eq(bookings.id, Number(id))).limit(1);
