@@ -21,6 +21,7 @@ export interface BookingData {
   guest_count: string;
   special_notes: string;
   images: string[];
+  image_share_urls: string[];
   status: BookingStatus;
   previous_status?: string;
   user_uid?: string;
@@ -72,7 +73,7 @@ function generateTicketId(): string {
 // ─── Booking Helpers ──────────────────────────────────────────────
 
 export async function createBooking(
-  data: Omit<BookingData, "id" | "created_at" | "updated_at" | "status" | "ticket_id">
+  data: Omit<BookingData, "id" | "created_at" | "updated_at" | "status" | "ticket_id" | "image_share_urls">
 ): Promise<{ id: string; ticket_id: string }> {
   const ticket_id = generateTicketId();
 
@@ -367,6 +368,7 @@ function rowToBooking(row: typeof bookings.$inferSelect): BookingData {
     guest_count: row.guestCount || "",
     special_notes: row.specialNotes || "",
     images: (row.images as string[]) || [],
+    image_share_urls: (row.imageShareUrls as string[]) || [],
     status: row.status as BookingStatus,
     previous_status: row.previousStatus || undefined,
     user_uid: row.userUid || undefined,

@@ -25,6 +25,7 @@ export const bookings = pgTable("bookings", {
   guestCount: varchar("guest_count", { length: 50 }),
   specialNotes: text("special_notes"),
   images: jsonb("images").$type<string[]>().default([]),
+  imageShareUrls: jsonb("image_share_urls").$type<string[]>().default([]),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
   previousStatus: varchar("previous_status", { length: 20 }),
   userUid: varchar("user_uid", { length: 200 }),

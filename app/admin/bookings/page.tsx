@@ -23,6 +23,7 @@ interface BookingData {
   guest_count: string;
   special_notes: string;
   images: string[];
+  image_share_urls: string[];
   status: string;
   previous_status?: string;
   user_uid?: string;
@@ -53,6 +54,9 @@ export default function AdminBookings() {
   const [isDark, setIsDark] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [downloadProgress, setDownloadProgress] = useState("");
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [shareLinkProgress, setShareLinkProgress] = useState("");
+  const [shareLinkCopied, setShareLinkCopied] = useState(false);
 
   useEffect(() => {
     try { setIsDark(localStorage.getItem("hfd_admin_dark") === "true"); } catch {}
@@ -112,6 +116,41 @@ export default function AdminBookings() {
       });
       fetchBookings();
     } catch {} finally { setIsUpdating(false); }
+  };
+
+  // ─── Generate Shareable Link ────────────────────────────────────
+  const handleGenerateShareLink = async () => {
+    if (!selectedBooking) return;
+    setIsGeneratingLink(true);
+    setShareLinkProgress("Uploading images to catbox.moe...");
+
+    try {
+      const res = await fetch("/api/admin/bookings/upload-images", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId: selectedBooking.id }),
+      });
+
+      const data = await res.json();
+
+      if (data.error) {
+        alert(`Error: ${data.error}`);
+        return;
+      }
+
+      // Update the selected booking with new share URLs
+      setSelectedBooking({
+        ...selectedBooking,
+        image_share_urls: data.catboxUrls,
+      });
+
+      setShareLinkProgress(`✅ ${data.count} images uploaded!`);
+    } catch (err) {
+      alert(`Upload failed: ${err instanceof Error ? err.message : "Unknown error"}`);
+    } finally {
+      setIsGeneratingLink(false);
+      setTimeout(() => setShareLinkProgress(""), 5000);
+    }
   };
 
   // ─── ZIP Download ────────────────────────────────────────────────
@@ -496,36 +535,101 @@ export default function AdminBookings() {
                 </div>
               )}
 
-              {/* ─── Reference Images + ZIP Download ───────────────── */}
+              {/* ─── Reference Images + Shareable Links ──────────── */}
               {selectedBooking.images && selectedBooking.images.length > 0 && (
                 <div className="sm:col-span-2">
                   <label className="text-xs font-body mb-2 block" style={{ color: textSecondary }}>
                     Reference Images ({selectedBooking.images.length})
                   </label>
 
-                  {/* Download ZIP Button */}
-                  <button
-                    onClick={handleDownloadZip}
-                    disabled={isDownloading}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-body font-semibold transition-colors mb-3 disabled:opacity-50"
-                    style={{ background: "#B8935F", color: "#1A1A1A" }}
-                  >
-                    {isDownloading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        {downloadProgress || "Preparing..."}
-                      </>
-                    ) : (
-                      <>
-                        <Download className="w-4 h-4" />
-                        Download ZIP
-                        <FileText className="w-3 h-3 opacity-60" />
-                      </>
-                    )}
-                  </button>
-                  {!isDownloading && (
+                  {/* Action Buttons Row */}
+                  <div className="flex flex-wrap gap-3 mb-3">
+                    {/* Download ZIP */}
+                    <button
+                      onClick={handleDownloadZip}
+                      disabled={isDownloading}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-body font-semibold transition-colors disabled:opacity-50"
+                      style={{ background: "#B8935F", color: "#1A1A1A" }}
+                    >
+                      {isDownloading ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" />{downloadProgress || "Preparing..."}</>
+                      ) : (
+                        <><Download className="w-4 h-4" />Download ZIP</>
+                      )}
+                    </button>
+
+                    {/* Generate Shareable Link */}
+                    <button
+                      onClick={handleGenerateShareLink}
+                      disabled={isGeneratingLink}
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-body font-semibold transition-colors disabled:opacity-50"
+                      style={{ background: hoverBg, color: textPrimary, border: `1px solid ${borderColor}` }}
+                    >
+                      {isGeneratingLink ? (
+                        <><Loader2 className="w-4 h-4 animate-spin" />{shareLinkProgress || "Uploading..."}</>
+                      ) : (
+                        <><ImageIcon className="w-4 h-4 text-gold" />Generate Shareable Links</>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Shareable URLs Section */}
+                  {selectedBooking.image_share_urls && selectedBooking.image_share_urls.length > 0 && (
+                    <div className="rounded-xl p-4 mb-3" style={{ background: "rgba(184,147,95,0.05)", border: "1px solid rgba(184,147,95,0.15)" }}>
+                      <div className="flex items-center justify-between mb-3">
+                        <p className="text-xs font-body font-semibold" style={{ color: "#B8935F" }}>
+                          🔗 Shareable Download Links ({selectedBooking.image_share_urls.length})
+                        </p>
+                        <button
+                          onClick={() => {
+                            const allUrls = selectedBooking.image_share_urls!.join("\n");
+                            navigator.clipboard.writeText(allUrls);
+                            setShareLinkCopied(true);
+                            setTimeout(() => setShareLinkCopied(false), 2000);
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg font-body transition-colors"
+                          style={{ background: "#B8935F", color: "#1A1A1A" }}
+                        >
+                          {shareLinkCopied ? "✓ Copied All!" : "Copy All URLs"}
+                        </button>
+                      </div>
+                      <div className="space-y-2">
+                        {selectedBooking.image_share_urls.map((url, i) => (
+                          <div key={i} className="flex items-center gap-2 rounded-lg px-3 py-2" style={{ background: hoverBg }}>
+                            <ImageIcon className="w-3 h-3 text-gold shrink-0" />
+                            <span className="text-xs font-body font-medium" style={{ color: textSecondary }}>
+                              Image {i + 1}:
+                            </span>
+                            <a
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-mono text-gold hover:underline truncate flex-1"
+                            >
+                              {url}
+                            </a>
+                            <button
+                              onClick={() => {
+                                navigator.clipboard.writeText(url);
+                              }}
+                              className="text-xs px-2 py-1 rounded shrink-0"
+                              style={{ background: borderColor, color: textMuted }}
+                              title="Copy URL"
+                            >
+                              📋
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[10px] font-body mt-2" style={{ color: textMuted }}>
+                        These links are permanent and never expire. Share them via WhatsApp, email, or any channel.
+                      </p>
+                    </div>
+                  )}
+
+                  {!isDownloading && !selectedBooking.image_share_urls?.length && (
                     <p className="text-xs font-body mb-3" style={{ color: textMuted }}>
-                      ZIP contains all {selectedBooking.images.length} images + customer details (TXT). Named: {selectedBooking.full_name.replace(/\s+/g, "_")}_{selectedBooking.ticket_id}.zip
+                      Click "Generate Shareable Links" to upload images to catbox.moe and get permanent download URLs.
                     </p>
                   )}
 
