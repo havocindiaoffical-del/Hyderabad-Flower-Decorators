@@ -2,7 +2,7 @@
 
 import React from "react";
 import { usePathname } from "next/navigation";
-import { FloatingPetals, FloralJourney } from "@/components/floral/FloralAnimations";
+import { FloatingPetals, ScrollFlowers } from "@/components/floral/FloralAnimations";
 
 export default function GlobalFloralOverlay() {
   const pathname = usePathname();
@@ -13,7 +13,7 @@ export default function GlobalFloralOverlay() {
   return (
     <>
       <FloatingPetals count={4} />
-      <FloralJourney />
+      <ScrollFlowers />
     </>
   );
 }
