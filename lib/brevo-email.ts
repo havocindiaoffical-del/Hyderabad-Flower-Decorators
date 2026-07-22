@@ -9,6 +9,7 @@ interface BrevoEmailParams {
 
 const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 const BUSINESS_NAME = "Hyderabad Flower Decorators";
+const OWNER_EMAIL = "nanid9404@gmail.com";
 
 function maskApiKey(key: string): string {
   if (!key || key.length < 8) return key ? "****" : "";
@@ -46,9 +47,7 @@ async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEm
       try {
         const parsed = JSON.parse(errorBody);
         if (parsed.message) errorMessage = parsed.message;
-      } catch {
-        // Use default error message
-      }
+      } catch {}
       return { success: false, error: errorMessage };
     }
 
@@ -87,38 +86,50 @@ export async function sendBookingNotifications(bookingData: {
     return {
       customerEmailSent: false,
       ownerEmailSent: false,
-      errors: ["Brevo sender email not configured. Set it in Admin Settings and verify it in Brevo dashboard."],
+      errors: ["Brevo sender email not configured. Set it in Admin Settings."],
     };
   }
 
-  const OWNER_EMAIL = "hydflowerdecorators@gmail.com";
   const errors: string[] = [];
   let customerEmailSent = false;
   let ownerEmailSent = false;
 
-  // Email 1: Customer confirmation
+  // ─── Email 1: Customer confirmation with COPYABLE ticket ID ────
+
   const customerHtml = `
-    <div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
         <h1 style="font-size: 24px; color: #1A1A1A; font-weight: 300;">HFD</h1>
         <p style="color: #B8935F; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">Hyderabad Flower Decorators</p>
       </div>
       <h2 style="color: #1A1A1A; font-weight: 400;">Thank you, ${bookingData.full_name}!</h2>
       <p style="color: #6B6560; line-height: 1.6;">We've received your booking request. Our team will review it and get back to you within 2 hours.</p>
-      <div style="background: #FAF8F5; border: 1px solid #E8E2DA; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-        <p style="color: #6B6560; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0;">Your Ticket ID</p>
-        <p style="color: #1A1A1A; font-size: 24px; font-weight: bold; letter-spacing: 0.05em; margin: 8px 0;">${bookingData.ticket_id}</p>
-        <p style="color: #6B6560; font-size: 12px; margin: 0;">Save this to track your booking status at hyderabadflowerdecorators.netlify.app/track</p>
+
+      <!-- COPYABLE TICKET ID BOX -->
+      <div style="background: #FAF8F5; border: 2px solid #E8E2DA; border-radius: 12px; padding: 24px; margin: 24px 0; text-align: center;">
+        <p style="color: #6B6560; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; margin: 0 0 8px 0;">Your Booking Ticket ID</p>
+        <div style="background: #1A1A1A; color: #FAF8F5; font-size: 22px; font-weight: bold; letter-spacing: 0.08em; padding: 14px 20px; border-radius: 8px; font-family: monospace, Consolas, 'Courier New', Courier; margin: 0 auto; display: inline-block;">
+          ${bookingData.ticket_id}
+        </div>
+        <p style="color: #9B9490; font-size: 11px; margin: 12px 0 0 0;">⬆ Copy this ID above to track your booking</p>
+        <p style="color: #6B6560; font-size: 12px; margin: 8px 0 0 0;">Track your booking anytime at <a href="https://hyderabadflowerdecorators.netlify.app/track" style="color: #B8935F; text-decoration: underline;">hyderabadflowerdecorators.netlify.app/track</a></p>
       </div>
+
       <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin: 20px 0;">
-        <p style="margin: 0; color: #1A1A1A;"><strong>Event:</strong> ${bookingData.event_type}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Date:</strong> ${bookingData.event_date}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Time:</strong> ${bookingData.preferred_time}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Venue:</strong> ${bookingData.venue_address}</p>
-        ${bookingData.estimated_budget ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Budget:</strong> ${bookingData.estimated_budget}</p>` : ""}
-        ${bookingData.guest_count ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Guests:</strong> ${bookingData.guest_count}</p>` : ""}
+        <table style="width: 100%; font-size: 14px; color: #1A1A1A;">
+          <tr><td style="padding: 6px 0; color: #6B6560; width: 40%;">Event</td><td style="padding: 6px 0; font-weight: 500; text-transform: capitalize;">${bookingData.event_type.replace(/-/g, " ")}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Date</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.event_date}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Time</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.preferred_time}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Venue</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.venue_address}</td></tr>
+          ${bookingData.estimated_budget ? `<tr><td style="padding: 6px 0; color: #6B6560;">Budget</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.estimated_budget}</td></tr>` : ""}
+          ${bookingData.guest_count ? `<tr><td style="padding: 6px 0; color: #6B6560;">Guests</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.guest_count}</td></tr>` : ""}
+        </table>
       </div>
-      <p style="color: #6B6560; font-size: 14px;">Need help? Call us at <a href="tel:+919876543210" style="color: #B8935F;">+91 98765 43210</a></p>
+
+      <div style="border-top: 1px solid #E8E2DA; padding-top: 16px; margin-top: 16px;">
+        <p style="color: #6B6560; font-size: 13px;">Need help? Call us at <a href="tel:+919876543210" style="color: #B8935F;">+91 98765 43210</a> or WhatsApp anytime.</p>
+        <p style="color: #9B9490; font-size: 11px; margin-top: 8px;">Hyderabad Flower Decorators • Hyderabad, Telangana, India</p>
+      </div>
     </div>
   `;
 
@@ -135,28 +146,37 @@ export async function sendBookingNotifications(bookingData: {
     errors.push(`Customer email failed: ${customerResult.error}`);
   }
 
-  // Email 2: Owner notification
+  // ─── Email 2: Owner notification ────────────────────────────────
+
   const ownerHtml = `
-    <div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 20px;">
+    <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
       <div style="text-align: center; margin-bottom: 30px;">
-        <h1 style="font-size: 24px; color: #1A1A1A; font-weight: 300;">New Booking Received</h1>
-        <p style="color: #B8935F; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">${bookingData.ticket_id}</p>
+        <div style="background: #B8935F; color: #1A1A1A; display: inline-block; padding: 6px 16px; border-radius: 20px; font-size: 11px; letter-spacing: 0.15em; text-transform: uppercase; font-weight: 600;">New Booking</div>
       </div>
+      <h2 style="color: #1A1A1A; font-weight: 500; font-size: 18px;">A new booking has been submitted!</h2>
+
+      <div style="background: #1A1A1A; color: #B8935F; font-size: 18px; font-weight: bold; letter-spacing: 0.08em; padding: 12px 20px; border-radius: 8px; text-align: center; font-family: monospace; margin: 16px 0;">
+        ${bookingData.ticket_id}
+      </div>
+
       <div style="background: #FAF8F5; border: 1px solid #E8E2DA; border-radius: 12px; padding: 20px; margin: 20px 0;">
-        <p style="margin: 0; color: #1A1A1A;"><strong>Customer:</strong> ${bookingData.full_name}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Phone:</strong> <a href="tel:${bookingData.phone}" style="color: #B8935F;">${bookingData.phone}</a></p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Email:</strong> <a href="mailto:${bookingData.email}" style="color: #B8935F;">${bookingData.email}</a></p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Event:</strong> ${bookingData.event_type}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Date:</strong> ${bookingData.event_date}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Time:</strong> ${bookingData.preferred_time}</p>
-        <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Venue:</strong> ${bookingData.venue_address}</p>
-        ${bookingData.google_maps_link ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Maps:</strong> <a href="${bookingData.google_maps_link}" style="color: #B8935F;">Open Map</a></p>` : ""}
-        ${bookingData.estimated_budget ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Budget:</strong> ${bookingData.estimated_budget}</p>` : ""}
-        ${bookingData.guest_count ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Guests:</strong> ${bookingData.guest_count}</p>` : ""}
-        ${bookingData.special_notes ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Notes:</strong> ${bookingData.special_notes}</p>` : ""}
+        <table style="width: 100%; font-size: 14px; color: #1A1A1A;">
+          <tr><td style="padding: 6px 0; color: #6B6560; width: 35%;">Customer</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.full_name}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Phone</td><td style="padding: 6px 0;"><a href="tel:${bookingData.phone}" style="color: #B8935F; font-weight: 500;">${bookingData.phone}</a></td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Email</td><td style="padding: 6px 0;"><a href="mailto:${bookingData.email}" style="color: #B8935F; font-weight: 500;">${bookingData.email}</a></td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Event</td><td style="padding: 6px 0; font-weight: 500; text-transform: capitalize;">${bookingData.event_type.replace(/-/g, " ")}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Date</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.event_date}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Time</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.preferred_time}</td></tr>
+          <tr><td style="padding: 6px 0; color: #6B6560;">Venue</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.venue_address}</td></tr>
+          ${bookingData.google_maps_link ? `<tr><td style="padding: 6px 0; color: #6B6560;">Maps</td><td style="padding: 6px 0;"><a href="${bookingData.google_maps_link}" style="color: #B8935F;">Open Map →</a></td></tr>` : ""}
+          ${bookingData.estimated_budget ? `<tr><td style="padding: 6px 0; color: #6B6560;">Budget</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.estimated_budget}</td></tr>` : ""}
+          ${bookingData.guest_count ? `<tr><td style="padding: 6px 0; color: #6B6560;">Guests</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.guest_count}</td></tr>` : ""}
+          ${bookingData.special_notes ? `<tr><td style="padding: 6px 0; color: #6B6560;">Notes</td><td style="padding: 6px 0; font-weight: 500;">${bookingData.special_notes}</td></tr>` : ""}
+        </table>
       </div>
-      <div style="text-align: center; margin: 20px 0;">
-        <a href="https://hyderabadflowerdecorators.netlify.app/admin/bookings" style="display: inline-block; background: #B8935F; color: #1A1A1A; padding: 12px 30px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;">View in Admin Panel</a>
+
+      <div style="text-align: center; margin: 24px 0;">
+        <a href="https://hyderabadflowerdecorators.netlify.app/admin/bookings" style="display: inline-block; background: #B8935F; color: #1A1A1A; padding: 14px 32px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;">View in Admin Panel →</a>
       </div>
     </div>
   `;
@@ -189,7 +209,7 @@ export async function testBrevoConnection(apiKey: string, senderEmail: string, t
   const result = await sendViaBrevo(apiKey, senderEmail, {
     toEmail: testRecipientEmail,
     toName: "Test Recipient",
-    subject: "HFD — Brevo Connection Test",
+    subject: "HFD — Brevo Connection Test ✅",
     htmlContent: testHtml,
   });
 
