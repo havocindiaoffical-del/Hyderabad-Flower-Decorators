@@ -4,23 +4,31 @@ import { getDb } from "@/lib/db";
 import { bookings } from "@/lib/schema";
 import { sendOwnerNotification } from "@/lib/brevo-email";
 
-const CATBOX_API = "https://catbox.moe/user/api.php";
-
-async function uploadToCatbox(fileBlob: Blob, filename: string): Promise<string | null> {
+// Upload image to Firebase Storage (server-side anonymous upload)
+async function uploadImageToStorage(fileBlob: Blob, filename: string): Promise<string | null> {
   try {
-    const formData = new FormData();
-    formData.append("reqtype", "fileupload");
-    formData.append("fileToUpload", fileBlob, filename);
+    // Firebase Storage REST API — upload without auth context
+    const bucket = "hyderabad-flower-decorators.firebasestorage.app";
+    const encodedPath = encodeURIComponent(`booking-images/${filename}`);
 
-    const response = await fetch(CATBOX_API, {
+    // Use Firebase Storage upload endpoint
+    const uploadUrl = `https://firebasestorage.googleapis.com/v0/b/${bucket}/o?name=${encodedPath}`;
+
+    const response = await fetch(uploadUrl, {
       method: "POST",
-      body: formData,
+      body: fileBlob,
+      headers: {
+        "Content-Type": fileBlob.type || "image/jpeg",
+      },
     });
 
     if (response.ok) {
-      const url = await response.text();
-      const trimmed = url.trim();
-      if (trimmed.startsWith("https://")) return trimmed;
+      const data = await response.json();
+      // Construct download URL
+      const downloadToken = data.downloadTokens;
+      if (downloadToken) {
+        return `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodedPath}?alt=media&token=${downloadToken}`;
+      }
     }
     return null;
   } catch {
@@ -102,7 +110,7 @@ export async function POST(request: NextRequest) {
       else if (file.type.includes("webp")) ext = "webp";
 
       const filename = `HFD_${booking.ticketId}_ref_${index + 1}.${ext}`;
-      const url = await uploadToCatbox(file, filename);
+      const url = await uploadImageToStorage(file, filename);
       return { index, url };
     });
 
@@ -162,7 +170,7 @@ ${catboxUrls.map((url, i) => `<a href="${url}" download class="download">Image $
 
       const htmlBlob = new Blob([htmlContent], { type: "text/html" });
       const htmlFilename = `HFD_${booking.ticketId}_${booking.fullName.replace(/\s+/g, "_")}_photos.html`;
-      zipUrl = await uploadToCatbox(htmlBlob, htmlFilename) || "";
+      zipUrl = await uploadImageToStorage(htmlBlob, htmlFilename) || "";
 
       if (!zipUrl && catboxUrls.length > 0) {
         // Fallback: use first image URL if HTML upload fails
