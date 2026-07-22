@@ -98,7 +98,7 @@ export async function GET() {
     let testEmailStatus = "not_attempted";
     let testEmailMessage = "";
 
-    if (apiKey && senderEmail && apiStatus === "valid") {
+    if (apiKey && senderEmail) {
       try {
         const testHtml = `
           <div style="font-family: system-ui; max-width: 400px; margin: 0 auto; padding: 20px; text-align: center;">
