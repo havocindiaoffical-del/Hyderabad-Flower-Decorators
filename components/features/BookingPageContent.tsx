@@ -3,7 +3,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Upload, X, CheckCircle2, Phone, Calendar, Copy, Check } from "lucide-react";
+import { Upload, X, CheckCircle2, Phone, Calendar, Copy, Check, Loader2 } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useUserAuth } from "@/components/providers/UserAuth";
 
@@ -35,15 +35,16 @@ export default function BookingPageContent() {
   const fileRef = useRef<HTMLInputElement>(null);
   const { user, signInWithGoogle, userName, userEmail, loading: authLoading } = useUserAuth();
   const [submitting, setSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState("");
   const [success, setSuccess] = useState(false);
   const [ticketId, setTicketId] = useState("");
   const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState("");
+  const [imageUploading, setImageUploading] = useState(false);
   const [fd, setFd] = useState<FD>({ full_name: "", phone: "", email: "", event_type: sp.get("event_type") || "", event_date: "", preferred_time: "", venue_address: "", google_maps_link: "", estimated_budget: "", guest_count: "", special_notes: "", images: [] });
   const [errors, setErrors] = useState<FE>({});
 
-  // Auto-fill from Google account
   useEffect(() => {
     if (user && userName && !fd.full_name) {
       setFd((prev) => ({ ...prev, full_name: userName, email: userEmail }));
@@ -62,31 +63,17 @@ export default function BookingPageContent() {
     if (!fd.event_type) e.event_type = "Required";
     if (!fd.event_date) e.event_date = "Required";
     else {
-      // ─── Prevent past dates ────────────────────────────────────────
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      const today = new Date(); today.setHours(0, 0, 0, 0);
       const selected = new Date(fd.event_date + "T00:00:00");
       if (selected < today) e.event_date = "Cannot select a past date";
     }
     if (!fd.preferred_time) e.preferred_time = "Required";
     else if (fd.event_date) {
-      // ─── Prevent past times for today ──────────────────────────────
       const now = new Date();
       const todayStr = now.toISOString().split("T")[0];
       if (fd.event_date === todayStr) {
-        const currentHour = now.getHours();
-        const currentMinute = now.getMinutes();
-        const [slotH, slotM] = fd.preferred_time.split(":").map(Number);
-        // Add 2 hours buffer — cannot book a time less than 2 hours from now
-        if (slotH < currentHour || (slotH === currentHour && slotM <= currentMinute)) {
-          e.preferred_time = "This time slot has already passed";
-        } else if (slotH === currentHour + 1 && currentMinute > 0) {
-          // Less than 1 hour ahead — too close
-          e.preferred_time = "Please select a time at least 2 hours ahead";
-        } else if (slotH <= currentHour + 1) {
-          // Within 2 hours — require buffer for preparation
-          if (slotH < currentHour + 2) e.preferred_time = "Please select a time at least 2 hours ahead";
-        }
+        const [slotH] = fd.preferred_time.split(":").map(Number);
+        if (slotH < now.getHours() + 2) e.preferred_time = "Please select a time at least 2 hours ahead";
       }
     }
     if (!fd.venue_address.trim()) e.venue_address = "Required";
@@ -102,44 +89,50 @@ export default function BookingPageContent() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
+  // ─── PHASE 1: Create booking + send customer email (FAST) ────
+  // ─── PHASE 2: Upload images to catbox.moe + send owner email (BACKGROUND) ──
   const onSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
     setSubmitting(true);
-    try {
-      // Upload images to Firebase Storage on the CLIENT side first
-      // (Firebase Storage requires auth context which only exists in browser)
-      const imageUrls: string[] = [];
-      if (fd.images.length > 0) {
-        try {
-          const { uploadBookingImage } = await import("@/lib/firebase-storage");
-          for (const img of fd.images) {
-            try {
-              const url = await uploadBookingImage(img);
-              imageUrls.push(url);
-            } catch {
-              // Individual image upload failed, skip it
-            }
-          }
-        } catch {
-          // Firebase not available, skip image uploads
-        }
-      }
+    setSubmitProgress("Submitting...");
 
+    try {
+      // Phase 1: FAST — create booking + customer email (NO images here)
       const sd = new FormData();
       Object.entries(fd).forEach(([k, v]) => { if (k !== "images" && v) sd.append(k, v); });
       if (user?.uid) sd.append("user_uid", user.uid);
-      // Send pre-uploaded image URLs instead of raw files
-      imageUrls.forEach((url, i) => sd.append(`image_url_${i}`, url));
+
       const res = await fetch("/api/booking", { method: "POST", body: sd });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
+
       setTicketId(data.ticket_id || "");
       setEmailSent(data.emailSent || false);
       setEmailError(data.emailError || "");
+      setSubmitProgress("");
+      setSubmitting(false);
       setSuccess(true);
-    } catch (err) { setErrors({ submit: err instanceof Error ? err.message : "Error" }); }
-    finally { setSubmitting(false); }
+
+      // Phase 2: BACKGROUND — upload images + send owner email (customer already sees success)
+      if (fd.images.length > 0) {
+        setImageUploading(true);
+        try {
+          const imageSd = new FormData();
+          imageSd.append("ticket_id", data.ticket_id);
+          fd.images.forEach((img, i) => imageSd.append(`image_${i}`, img));
+
+          await fetch("/api/booking/upload-images", { method: "POST", body: imageSd });
+        } catch {
+          // If background upload fails, admin can retry from dashboard
+        }
+        setImageUploading(false);
+      }
+    } catch (err) {
+      setErrors({ submit: err instanceof Error ? err.message : "Error" });
+      setSubmitProgress("");
+      setSubmitting(false);
+    }
   };
 
   const copyTicketId = () => {
@@ -157,7 +150,14 @@ export default function BookingPageContent() {
           <p className="text-stone font-light mb-2">Thank you, {fd.full_name}!</p>
           <p className="text-sm text-warm-gray font-body mb-6">We&apos;ll review your request and respond within 2 hours.</p>
 
-          {/* Email status */}
+          {/* Image upload indicator */}
+          {imageUploading && (
+            <div className="mb-4 p-3 rounded-xl bg-cream border border-border-light flex items-center gap-2 justify-center">
+              <Loader2 className="w-4 h-4 text-gold animate-spin" />
+              <span className="text-xs font-body text-stone">Uploading reference images...</span>
+            </div>
+          )}
+
           {emailSent && (
             <div className="mb-4 p-3 rounded-xl bg-sage/10 border border-sage/20 text-sage text-xs font-body text-center">
               ✓ Confirmation email sent to your inbox
@@ -165,12 +165,7 @@ export default function BookingPageContent() {
           )}
           {!emailSent && emailError && (
             <div className="mb-4 p-3 rounded-xl bg-gold/5 border border-gold/20 text-stone text-xs font-body text-center">
-              Your booking is confirmed, but the confirmation email could not be sent right now. Please save your ticket ID below — you can also track your booking at the Track page.
-            </div>
-          )}
-          {!emailSent && !emailError && (
-            <div className="mb-4 p-3 rounded-xl bg-gold/5 border border-gold/20 text-stone text-xs font-body text-center">
-              Your booking is confirmed. Confirmation emails are being set up — please save your ticket ID below.
+              Your booking is confirmed, but the confirmation email could not be sent right now. Please save your ticket ID below.
             </div>
           )}
 
@@ -250,17 +245,12 @@ export default function BookingPageContent() {
                   )}
                   <div>
                     <p className="text-sm font-medium text-charcoal font-body">{user.displayName || user.email}</p>
-                    <p className="text-xs text-warm-gray font-body">Signed in — your details are auto-filled</p>
+                    <p className="text-xs text-warm-gray font-body">Signed in — details auto-filled</p>
                   </div>
-                  <button type="button" onClick={() => {}} className="ml-auto text-xs text-gold font-body hover:underline">Signed in</button>
                 </div>
               ) : (
-                <button
-                  type="button"
-                  onClick={signInWithGoogle}
-                  disabled={authLoading}
-                  className="w-full flex items-center justify-center gap-3 bg-white border border-border-light text-charcoal h-12 rounded-xl hover:bg-cream transition-colors disabled:opacity-50"
-                >
+                <button type="button" onClick={signInWithGoogle} disabled={authLoading}
+                  className="w-full flex items-center justify-center gap-3 bg-white border border-border-light text-charcoal h-12 rounded-xl hover:bg-cream transition-colors disabled:opacity-50">
                   <svg width="18" height="18" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 01-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -291,24 +281,17 @@ export default function BookingPageContent() {
                 <div><label className="block label-uppercase text-stone mb-2">Date *</label><input type="date" value={fd.event_date} onChange={(e) => {
                   const newDate = e.target.value;
                   ch("event_date", newDate);
-                  // ─── If date changed to today and time is past, clear time ───
-                  const now = new Date();
-                  const todayStr = now.toISOString().split("T")[0];
+                  const now = new Date(); const todayStr = now.toISOString().split("T")[0];
                   if (newDate === todayStr && fd.preferred_time) {
                     const [slotH] = fd.preferred_time.split(":").map(Number);
-                    if (slotH < now.getHours() + 2) {
-                      ch("preferred_time", "");
-                    }
+                    if (slotH < now.getHours() + 2) ch("preferred_time", "");
                   }
                 }} min={new Date().toISOString().split("T")[0]} className={inputCls} />{errors.event_date && <p className="mt-1 text-xs text-red-500">{errors.event_date}</p>}</div>
                 <div><label className="block label-uppercase text-stone mb-2">Preferred Time *</label><Select value={fd.preferred_time} onValueChange={(v) => ch("preferred_time", v)}><SelectTrigger><SelectValue placeholder="Select time" /></SelectTrigger><SelectContent>{timeSlots.map((t) => {
-                  // ─── Disable past time slots for today's date ──────────
-                  const now = new Date();
-                  const todayStr = now.toISOString().split("T")[0];
+                  const now = new Date(); const todayStr = now.toISOString().split("T")[0];
                   const isToday = fd.event_date === todayStr;
-                  const [slotH, slotM] = t.value.split(":").map(Number);
+                  const [slotH] = t.value.split(":").map(Number);
                   const currentHour = now.getHours();
-                  // Disable slots that are less than 2 hours from now
                   const isDisabled = isToday && slotH < currentHour + 2;
                   return <SelectItem key={t.value} value={t.value} disabled={isDisabled}>{t.label}{isDisabled ? " (unavailable)" : ""}</SelectItem>;
                 })}</SelectContent></Select>{errors.preferred_time && <p className="mt-1 text-xs text-red-500">{errors.preferred_time}</p>}</div>
@@ -350,7 +333,11 @@ export default function BookingPageContent() {
             </div>
 
             <button type="submit" disabled={submitting} className="w-full flex items-center justify-center gap-2 bg-charcoal text-ivory h-14 rounded-full label-uppercase hover:bg-graphite transition-colors disabled:opacity-50">
-              {submitting ? <div className="w-4 h-4 border-2 border-ivory/30 border-t-ivory rounded-full animate-spin" /> : <><Calendar className="w-4 h-4" /> Submit Booking Request</>}
+              {submitting ? (
+                <><Loader2 className="w-4 h-4 animate-spin" /><span>{submitProgress || "Submitting..."}</span></>
+              ) : (
+                <><Calendar className="w-4 h-4" /> Submit Booking Request</>
+              )}
             </button>
           </motion.form>
         </div>

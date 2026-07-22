@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getBookingByTicketId, updateBookingStatus } from "@/lib/db-helpers";
-import { sendBookingNotifications } from "@/lib/brevo-email";
+import { sendCustomerConfirmation, sendOwnerNotification } from "@/lib/brevo-email";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -25,22 +25,40 @@ export async function PATCH(request: NextRequest) {
       // Cancel the booking
       await updateBookingStatus(booking.id!, "cancelled", reason ? `Customer cancellation: ${reason}` : "Cancelled by customer");
 
-      // Send cancellation notification emails
+      // Send cancellation notification emails (both customer + owner in parallel)
       try {
-        await sendBookingNotifications({
-          full_name: booking.full_name,
-          phone: booking.phone,
-          email: booking.email,
-          event_type: booking.event_type,
-          event_date: booking.event_date,
-          preferred_time: booking.preferred_time,
-          venue_address: booking.venue_address,
-          google_maps_link: booking.google_maps_link,
-          estimated_budget: booking.estimated_budget,
-          guest_count: booking.guest_count,
-          special_notes: booking.special_notes,
-          ticket_id: booking.ticket_id,
-        });
+        await Promise.all([
+          sendCustomerConfirmation({
+            full_name: booking.full_name,
+            phone: booking.phone,
+            email: booking.email,
+            event_type: booking.event_type,
+            event_date: booking.event_date,
+            preferred_time: booking.preferred_time,
+            venue_address: booking.venue_address,
+            google_maps_link: booking.google_maps_link,
+            estimated_budget: booking.estimated_budget,
+            guest_count: booking.guest_count,
+            special_notes: booking.special_notes,
+            ticket_id: booking.ticket_id,
+          }),
+          sendOwnerNotification({
+            full_name: booking.full_name,
+            phone: booking.phone,
+            email: booking.email,
+            event_type: booking.event_type,
+            event_date: booking.event_date,
+            preferred_time: booking.preferred_time,
+            venue_address: booking.venue_address,
+            google_maps_link: booking.google_maps_link,
+            estimated_budget: booking.estimated_budget,
+            guest_count: booking.guest_count,
+            special_notes: booking.special_notes,
+            ticket_id: booking.ticket_id,
+            image_count: booking.image_share_urls?.length || 0,
+            zip_url: booking.zip_url || "",
+          }),
+        ]);
       } catch {}
 
       return NextResponse.json({ success: true, message: "Booking cancelled successfully", status: "cancelled" });

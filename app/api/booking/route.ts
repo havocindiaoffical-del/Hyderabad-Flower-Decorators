@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/db-helpers";
-import { sendBookingNotifications } from "@/lib/brevo-email";
+import { sendCustomerConfirmation } from "@/lib/brevo-email";
 
+// FAST booking creation — saves to DB + sends customer email only
+// Owner email + image uploads happen in separate /api/booking/upload-images call
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
 
-    // Extract text fields
     const full_name = (formData.get("full_name") as string)?.trim() || "";
     const phone = (formData.get("phone") as string)?.trim() || "";
     const email = (formData.get("email") as string)?.trim() || "";
@@ -22,53 +23,19 @@ export async function POST(request: NextRequest) {
 
     // Validate required fields
     if (!full_name || !phone || !email || !event_type || !event_date || !preferred_time || !venue_address) {
-      return NextResponse.json(
-        { error: "Please fill in all required fields" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please fill in all required fields" }, { status: 400 });
     }
 
-    // Validate phone (Indian numbers)
     const cleanPhone = phone.replace(/\D/g, "");
     if (!/^[6-9]\d{9}$/.test(cleanPhone)) {
-      return NextResponse.json(
-        { error: "Please enter a valid 10-digit Indian phone number" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please enter a valid 10-digit Indian phone number" }, { status: 400 });
     }
 
-    // Validate email
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return NextResponse.json(
-        { error: "Please enter a valid email address" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
 
-    // Collect pre-uploaded image URLs from client-side Firebase Storage uploads
-    const imageUrls: string[] = [];
-    const imageUrlEntries = Array.from(formData.entries()).filter(([key]) =>
-      key.startsWith("image_url_")
-    );
-    for (const [, value] of imageUrlEntries) {
-      const url = (value as string).trim();
-      if (url) imageUrls.push(url);
-    }
-
-    // Also handle raw file uploads (legacy support — for cases where client upload fails)
-    const imageFileEntries = Array.from(formData.entries()).filter(([key]) =>
-      key.startsWith("image_") && !key.startsWith("image_url_")
-    );
-    for (const [, value] of imageFileEntries) {
-      if (value instanceof File) {
-        if (value.size > 5 * 1024 * 1024) continue;
-        if (!["image/jpeg", "image/png", "image/webp"].includes(value.type)) continue;
-        // Skip raw file uploads on server side — they should be uploaded via client
-        // Firebase Storage requires auth context which doesn't exist in API routes
-      }
-    }
-
-    // Create booking in database
+    // Create booking in database FAST
     let bookingId = "";
     let ticket_id = "";
 
@@ -85,7 +52,7 @@ export async function POST(request: NextRequest) {
         estimated_budget,
         guest_count,
         special_notes,
-        images: imageUrls,
+        images: [],
         user_uid: user_uid || "",
       });
       bookingId = result.id;
@@ -98,12 +65,12 @@ export async function POST(request: NextRequest) {
       bookingId = `local-${Date.now()}`;
     }
 
-    // Send email notifications via Brevo to BOTH customer and owner
+    // Send customer email immediately (don't wait for owner email)
     let emailSent = false;
     let emailError = "";
 
     try {
-      const emailResult = await sendBookingNotifications({
+      const emailResult = await sendCustomerConfirmation({
         full_name,
         phone,
         email,
@@ -117,26 +84,20 @@ export async function POST(request: NextRequest) {
         special_notes: special_notes || "",
         ticket_id,
       });
-
-      emailSent = emailResult.customerEmailSent || emailResult.ownerEmailSent;
-
-      if (emailResult.errors.length > 0) {
-        emailError = emailResult.errors.join("; ");
-      }
+      emailSent = emailResult.sent;
+      if (emailResult.error) emailError = emailResult.error;
     } catch (err) {
-      emailError = err instanceof Error ? err.message : "Email notification system unavailable";
+      emailError = err instanceof Error ? err.message : "Email unavailable";
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        bookingId,
-        ticket_id,
-        emailSent,
-        emailError: emailError || undefined,
-      },
-      { status: 201 }
-    );
+    // Return to customer IMMEDIATELY — they don't need to wait for image uploads or owner email
+    return NextResponse.json({
+      success: true,
+      bookingId,
+      ticket_id,
+      emailSent,
+      emailError: emailError || undefined,
+    }, { status: 201 });
   } catch {
     return NextResponse.json(
       { error: "Something went wrong. Please try again or call us at +91 98765 43210" },

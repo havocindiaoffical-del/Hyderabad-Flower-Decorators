@@ -17,17 +17,11 @@ function maskApiKey(key: string): string {
 }
 
 async function getEffectiveBrevoConfig(): Promise<{ apiKey: string; senderEmail: string }> {
-  // Primary: read from DB (admin can change via settings page)
   const dbConfig = await getBrevoConfig();
-
-  // Fallback: read env vars at RUNTIME (not module-import time)
-  // This is critical — Netlify env vars are only available at runtime, not during build
   const envApiKey = process.env.BREVO_API_KEY || "";
   const envSenderEmail = process.env.BREVO_SENDER_EMAIL || "hyderabadflowerdecorators@outlook.com";
-
   const apiKey = dbConfig.apiKey || envApiKey;
   const senderEmail = dbConfig.senderEmail || envSenderEmail;
-
   return { apiKey, senderEmail };
 }
 
@@ -41,16 +35,8 @@ async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEm
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        sender: {
-          name: BUSINESS_NAME,
-          email: senderEmail,
-        },
-        to: [
-          {
-            email: params.toEmail,
-            name: params.toName,
-          },
-        ],
+        sender: { name: BUSINESS_NAME, email: senderEmail },
+        to: [{ email: params.toEmail, name: params.toName }],
         subject: params.subject,
         htmlContent: params.htmlContent,
       }),
@@ -66,7 +52,6 @@ async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEm
       return { success: false, error: errorMessage, statusCode: response.status };
     }
 
-    // Brevo returns 201 on success
     return { success: true, statusCode: response.status };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Network error contacting Brevo";
@@ -74,7 +59,9 @@ async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEm
   }
 }
 
-export async function sendBookingNotifications(bookingData: {
+// ─── Customer confirmation email ONLY (sent immediately) ────────
+
+export async function sendCustomerConfirmation(bookingData: {
   full_name: string;
   phone: string;
   email: string;
@@ -87,39 +74,12 @@ export async function sendBookingNotifications(bookingData: {
   guest_count?: string;
   special_notes?: string;
   ticket_id: string;
-}): Promise<{ customerEmailSent: boolean; ownerEmailSent: boolean; errors: string[]; configSource: string }> {
+}): Promise<{ sent: boolean; error?: string }> {
   const config = await getEffectiveBrevoConfig();
 
-  let configSource = "db";
-  if (!config.apiKey) {
-    return {
-      customerEmailSent: false,
-      ownerEmailSent: false,
-      errors: ["No Brevo API key found. Configure it in Admin Settings or set BREVO_API_KEY env var on Netlify."],
-      configSource: "none",
-    };
+  if (!config.apiKey || !config.senderEmail) {
+    return { sent: false, error: "No Brevo config found" };
   }
-
-  // Check if the effective API key came from env vars (not DB)
-  const envApiKey = process.env.BREVO_API_KEY || "";
-  if (config.apiKey === envApiKey && envApiKey) {
-    configSource = "env";
-  }
-
-  if (!config.senderEmail) {
-    return {
-      customerEmailSent: false,
-      ownerEmailSent: false,
-      errors: ["No Brevo sender email found. Set it in Admin Settings or set BREVO_SENDER_EMAIL env var. The sender email must be verified in Brevo dashboard → Settings → Senders."],
-      configSource,
-    };
-  }
-
-  const errors: string[] = [];
-  let customerEmailSent = false;
-  let ownerEmailSent = false;
-
-  // ─── Email 1: Customer confirmation with COPYABLE ticket ID ────
 
   const customerHtml = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -158,20 +118,50 @@ export async function sendBookingNotifications(bookingData: {
     </div>
   `;
 
-  const customerResult = await sendViaBrevo(config.apiKey, config.senderEmail, {
+  const result = await sendViaBrevo(config.apiKey, config.senderEmail, {
     toEmail: bookingData.email,
     toName: bookingData.full_name,
     subject: `Booking Confirmed — Ticket ${bookingData.ticket_id}`,
     htmlContent: customerHtml,
   });
 
-  if (customerResult.success) {
-    customerEmailSent = true;
-  } else {
-    errors.push(`Customer email failed: ${customerResult.error} (status: ${customerResult.statusCode || "N/A"})`);
+  if (result.success) return { sent: true };
+  return { sent: false, error: result.error };
+}
+
+// ─── Owner notification email (sent AFTER image upload completes) ──
+
+export async function sendOwnerNotification(bookingData: {
+  full_name: string;
+  phone: string;
+  email: string;
+  event_type: string;
+  event_date: string;
+  preferred_time: string;
+  venue_address: string;
+  google_maps_link?: string;
+  estimated_budget?: string;
+  guest_count?: string;
+  special_notes?: string;
+  ticket_id: string;
+  image_count: number;
+  zip_url: string;
+}): Promise<{ sent: boolean; error?: string }> {
+  const config = await getEffectiveBrevoConfig();
+
+  if (!config.apiKey || !config.senderEmail) {
+    return { sent: false, error: "No Brevo config found" };
   }
 
-  // ─── Email 2: Owner notification ────────────────────────────────
+  // Photo access section — only shown if images exist
+  const photoSection = bookingData.zip_url ? `
+    <div style="background: #1A1A1A; border-radius: 12px; padding: 24px; margin: 20px 0; text-align: center;">
+      <p style="color: #9B9490; font-size: 12px; margin: 0 0 12px 0; letter-spacing: 0.1em; text-transform: uppercase;">📎 REFERENCE IMAGES</p>
+      <p style="color: #E8E2DA; font-size: 16px; margin: 0 0 16px 0;">${bookingData.image_count} photos uploaded by customer</p>
+      <a href="${bookingData.zip_url}" target="_blank" style="display: inline-block; background: #B8935F; color: #1A1A1A; padding: 14px 32px; border-radius: 30px; text-decoration: none; font-weight: 700; font-size: 14px; letter-spacing: 0.05em;">✨ Access Photos →</a>
+      <p style="color: #6B6560; font-size: 10px; margin: 12px 0 0 0;">Click to view all ${bookingData.image_count} reference images with download options</p>
+    </div>
+  ` : "";
 
   const ownerHtml = `
     <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
@@ -183,6 +173,8 @@ export async function sendBookingNotifications(bookingData: {
       <div style="background: #1A1A1A; color: #B8935F; font-size: 18px; font-weight: bold; letter-spacing: 0.08em; padding: 12px 20px; border-radius: 8px; text-align: center; font-family: monospace; margin: 16px 0;">
         ${bookingData.ticket_id}
       </div>
+
+      ${photoSection}
 
       <div style="background: #FAF8F5; border: 1px solid #E8E2DA; border-radius: 12px; padding: 20px; margin: 20px 0;">
         <table style="width: 100%; font-size: 14px; color: #1A1A1A;">
@@ -206,20 +198,15 @@ export async function sendBookingNotifications(bookingData: {
     </div>
   `;
 
-  const ownerResult = await sendViaBrevo(config.apiKey, config.senderEmail, {
+  const result = await sendViaBrevo(config.apiKey, config.senderEmail, {
     toEmail: OWNER_EMAIL,
     toName: "HFD Owner",
     subject: `New Booking — ${bookingData.ticket_id} — ${bookingData.full_name}`,
     htmlContent: ownerHtml,
   });
 
-  if (ownerResult.success) {
-    ownerEmailSent = true;
-  } else {
-    errors.push(`Owner email failed: ${ownerResult.error} (status: ${ownerResult.statusCode || "N/A"})`);
-  }
-
-  return { customerEmailSent, ownerEmailSent, errors, configSource };
+  if (result.success) return { sent: true };
+  return { sent: false, error: result.error };
 }
 
 export async function testBrevoConnection(apiKey: string, senderEmail: string, testRecipientEmail: string): Promise<{ success: boolean; message: string }> {
@@ -238,9 +225,7 @@ export async function testBrevoConnection(apiKey: string, senderEmail: string, t
     htmlContent: testHtml,
   });
 
-  if (result.success) {
-    return { success: true, message: `Test email sent successfully to ${testRecipientEmail}. Check your inbox (and spam folder).` };
-  }
+  if (result.success) return { success: true, message: `Test email sent successfully to ${testRecipientEmail}.` };
   return { success: false, message: result.error || "Unknown error" };
 }
 
