@@ -168,6 +168,11 @@ export default function BookingPageContent() {
               Your booking is confirmed, but the confirmation email could not be sent right now. Please save your ticket ID below — you can also track your booking at the Track page.
             </div>
           )}
+          {!emailSent && !emailError && (
+            <div className="mb-4 p-3 rounded-xl bg-gold/5 border border-gold/20 text-stone text-xs font-body text-center">
+              Your booking is confirmed. Confirmation emails are being set up — please save your ticket ID below.
+            </div>
+          )}
 
           {/* Ticket ID Card */}
           <div className="bg-white rounded-2xl p-6 border-2 border-gold/30 mb-6 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)]">
