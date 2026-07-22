@@ -19,16 +19,48 @@
   --font-serif: var(--font-playfair);
 }
 
+/* ─── Dark theme overrides ──────────────────────────────────────── */
+.dark {
+  --color-ivory: #111111;
+  --color-cream: #1A1A1A;
+  --color-charcoal: #E8E2DA;
+  --color-graphite: #2D2D2D;
+  --color-gold: #B8935F;
+  --color-gold-light: #D4B886;
+  --color-sage: #5B7553;
+  --color-sage-light: #7A9470;
+  --color-stone: #9B9490;
+  --color-warm-gray: #6B6560;
+  --color-border-light: #2A2A2A;
+
+  --bg-primary: #0F0F0F;
+  --bg-card: #1A1A1A;
+  --bg-sidebar: #141414;
+  --bg-input: #222222;
+  --text-primary: #E8E2DA;
+  --text-secondary: #9B9490;
+  --text-muted: #6B6560;
+  --border-color: #2A2A2A;
+}
+
 :root {
   --cursor-x: 50%;
   --cursor-y: 50%;
+  --bg-primary: #FAF8F5;
+  --bg-card: #FFFFFF;
+  --bg-sidebar: #FFFFFF;
+  --bg-input: #FAF8F5;
+  --text-primary: #1A1A1A;
+  --text-secondary: #6B6560;
+  --text-muted: #9B9490;
+  --border-color: #E8E2DA;
 }
 
-* { border-color: var(--color-border-light); }
+* { border-color: var(--border-color); }
 
 body {
-  background: #FAF8F5;
-  color: #1A1A1A;
+  background: var(--color-ivory);
+  color: var(--color-charcoal);
   font-family: var(--font-inter), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   overflow-x: hidden;
@@ -44,7 +76,7 @@ html {
 }
 
 ::-webkit-scrollbar { width: 5px; }
-::-webkit-scrollbar-track { background: #FAF8F5; }
+::-webkit-scrollbar-track { background: var(--color-ivory); }
 ::-webkit-scrollbar-thumb { background: #D4B886; border-radius: 10px; }
 
 /* ─── Editorial heading styles ──────────────────────────────────── */
@@ -79,6 +111,55 @@ html {
   font-weight: 600;
   letter-spacing: 0.25em;
   text-transform: uppercase;
+}
+
+/* ─── Text reveal animation with depth ──────────────────────────── */
+
+.text-reveal {
+  opacity: 0;
+  transform: translateY(40px) scale(0.98);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  filter: blur(4px);
+}
+.text-reveal.revealed {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  filter: blur(0);
+}
+
+/* Staggered children reveal */
+.text-reveal-stagger > * {
+  opacity: 0;
+  transform: translateY(30px) scale(0.97);
+  filter: blur(3px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+              filter 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.text-reveal-stagger.revealed > *:nth-child(1) { transition-delay: 0ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(2) { transition-delay: 100ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(3) { transition-delay: 200ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(4) { transition-delay: 300ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(5) { transition-delay: 400ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(6) { transition-delay: 500ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(7) { transition-delay: 600ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+.text-reveal-stagger.revealed > *:nth-child(n+8) { transition-delay: 700ms; opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+
+/* Heading reveal with horizontal split */
+.heading-reveal {
+  opacity: 0;
+  transform: translateX(-30px);
+  clip-path: inset(0 100% 0 0);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              clip-path 1s cubic-bezier(0.77, 0, 0.175, 1);
+}
+.heading-reveal.revealed {
+  opacity: 1;
+  transform: translateX(0);
+  clip-path: inset(0 0% 0 0);
 }
 
 /* ─── Image reveal ──────────────────────────────────────────────── */
@@ -149,7 +230,28 @@ main { animation: fadeIn 0.3s ease; }
 
 .section-divider {
   height: 1px;
-  background: linear-gradient(to right, transparent, #E8E2DA, transparent);
+  background: linear-gradient(to right, transparent, var(--color-border-light), transparent);
+}
+
+/* ─── Notification pulse ────────────────────────────────────────── */
+
+.notification-pulse {
+  position: relative;
+}
+.notification-pulse::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ef4444;
+  border-radius: 50%;
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
 }
 
 /* ─── Keyframe Animations ───────────────────────────────────────── */
@@ -164,9 +266,27 @@ main { animation: fadeIn 0.3s ease; }
   to { opacity: 1; }
 }
 
-/* ─── Reduced Motion: Disable 3D Floral Animations ──────────────── */
-/* When the user prefers reduced motion, all continuous floral
-   animations are disabled. Only simple fade/reveal transitions remain. */
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { opacity: 0; transform: translateX(-100px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes blurIn {
+  from { opacity: 0; filter: blur(10px); }
+  to { opacity: 1; filter: blur(0); }
+}
+
+/* ─── Reduced Motion ────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
   .floral-element,
@@ -180,13 +300,16 @@ main { animation: fadeIn 0.3s ease; }
     animation: none !important;
   }
 
-  /* Disable Framer Motion animated elements */
-  [style*="animation"] {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
+  .text-reveal,
+  .text-reveal-stagger > *,
+  .heading-reveal {
+    transition-duration: 0.01ms !important;
+    filter: none !important;
+    transform: none !important;
+    opacity: 1 !important;
+    clip-path: none !important;
   }
 
-  /* Keep only essential page animations */
   @keyframes fadeUp {
     from { opacity: 0; }
     to { opacity: 1; }

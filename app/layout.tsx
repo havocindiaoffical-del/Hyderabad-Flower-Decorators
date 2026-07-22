@@ -21,6 +21,7 @@ import SmoothScroll from "@/components/providers/SmoothScroll";
 import CustomCursor from "@/components/ui/CustomCursor";
 import { UserAuthProvider } from "@/components/providers/UserAuth";
 import GlobalFloralOverlay from "@/components/floral/GlobalFloralOverlay";
+import TextRevealObserver from "@/components/features/TextRevealObserver";
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <Footer />
             <FloatingActions />
             <GlobalFloralOverlay />
+            <TextRevealObserver />
           </SmoothScroll>
         </UserAuthProvider>
       </body>

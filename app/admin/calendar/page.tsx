@@ -1,14 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-
 import { ChevronLeft, ChevronRight, Lock, Unlock, AlertCircle } from "lucide-react";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
-} from "@/components/ui/dialog";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface BookingData {
@@ -40,6 +33,22 @@ interface CalendarDay {
   blockReason?: string;
 }
 
+// Color mapping for each event type
+const eventTypeColors: Record<string, { bg: string; text: string; dot: string }> = {
+  "housewarming": { bg: "bg-orange-100 dark:bg-orange-900/30", text: "text-orange-700 dark:text-orange-300", dot: "bg-orange-500" },
+  "wedding": { bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-700 dark:text-pink-300", dot: "bg-pink-500" },
+  "baby-shower": { bg: "bg-cyan-100 dark:bg-cyan-900/30", text: "text-cyan-700 dark:text-cyan-300", dot: "bg-cyan-500" },
+  "pooja": { bg: "bg-yellow-100 dark:bg-yellow-900/30", text: "text-yellow-700 dark:text-yellow-300", dot: "bg-yellow-500" },
+  "corporate": { bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-300", dot: "bg-blue-500" },
+  "custom": { bg: "bg-violet-100 dark:bg-violet-900/30", text: "text-violet-700 dark:text-violet-300", dot: "bg-violet-500" },
+  "birthday": { bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-300", dot: "bg-red-500" },
+  "engagement": { bg: "bg-emerald-100 dark:bg-emerald-900/30", text: "text-emerald-700 dark:text-emerald-300", dot: "bg-emerald-500" },
+};
+
+function getEventColor(eventType: string) {
+  return eventTypeColors[eventType] || { bg: "bg-gold/10", text: "text-gold", dot: "bg-gold" };
+}
+
 export default function AdminCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [calendarDays, setCalendarDays] = useState<CalendarDay[]>([]);
@@ -47,6 +56,14 @@ export default function AdminCalendar() {
   const [blockedDates, setBlockedDates] = useState<Record<string, CalendarBlockData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [dbReady, setDbReady] = useState(true);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("hfd_admin_dark");
+      setIsDark(saved === "true");
+    } catch {}
+  }, []);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -55,11 +72,9 @@ export default function AdminCalendar() {
     try {
       const firstDay = new Date(year, month, 1).toISOString().split("T")[0];
       const lastDay = new Date(year, month + 1, 0).toISOString().split("T")[0];
-
       const res = await fetch(`/api/admin/calendar?start=${firstDay}&end=${lastDay}`);
       const data = await res.json();
       if (data.error) { setDbReady(false); generateCalendarDays([], {}); return; }
-
       const blocks: Record<string, CalendarBlockData> = {};
       (data.blocks || []).forEach((b: CalendarBlockData) => { blocks[b.date] = b; });
       setBlockedDates(blocks);
@@ -113,23 +128,7 @@ export default function AdminCalendar() {
         body: JSON.stringify({ date, blocked: !isBlocked, reason: "Blocked by admin" }),
       });
       fetchCalendarData();
-    } catch { /* handle error */ }
-  };
-
-  const getDayStatus = (day: CalendarDay) => {
-    if (day.blocked) return "unavailable";
-    if (day.bookings.length >= 3) return "unavailable";
-    if (day.bookings.length >= 2) return "few_slots";
-    return "available";
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "available": return "bg-sage/10 border-sage/20";
-      case "few_slots": return "bg-amber-50 border-amber-200";
-      case "unavailable": return "bg-red-50 border-red-200";
-      default: return "bg-white border-border-light";
-    }
+    } catch {}
   };
 
   const navigateMonth = (direction: number) => {
@@ -138,134 +137,166 @@ export default function AdminCalendar() {
 
   const monthName = currentDate.toLocaleString("en-US", { month: "long", year: "numeric" });
 
+  // Theme colors
+  const bgCard = isDark ? "#1A1A1A" : "#FFFFFF";
+  const bgPrimary = isDark ? "#0F0F0F" : "#FAF8F5";
+  const textPrimary = isDark ? "#E8E2DA" : "#1A1A1A";
+  const textSecondary = isDark ? "#9B9490" : "#6B6560";
+  const borderColor = isDark ? "#2A2A2A" : "#E8E2DA";
+  const hoverBg = isDark ? "#222222" : "#F0EBE3";
+  const dayBg = isDark ? "#1A1A1A" : "#FFFFFF";
+  const dimBg = isDark ? "#0F0F0F" : "#F0EBE3";
+
   if (isLoading) {
     return (
-      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="p-6 flex flex-col items-center justify-center min-h-[60vh] gap-4" style={{ background: bgPrimary }}>
         <div className="w-8 h-8 border-2 border-gold border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm text-warm-gray font-body">Loading calendar...</p>
       </div>
     );
   }
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8">
+    <div className="p-4 sm:p-6 lg:p-8" style={{ background: bgPrimary }}>
       <div className="mb-8">
-        <h1 className="text-2xl font-heading font-bold text-charcoal">Calendar</h1>
-        <p className="text-sm text-warm-gray font-body mt-1">View and manage booking availability</p>
+        <h1 className="text-2xl font-heading font-bold" style={{ color: textPrimary }}>Calendar</h1>
+        <p className="text-sm font-body mt-1" style={{ color: textSecondary }}>View bookings by event type with color coding</p>
       </div>
 
       {!dbReady && (
         <div className="mb-6 p-4 rounded-xl bg-gold/5 border border-gold/20 flex items-center gap-3">
           <AlertCircle className="w-5 h-5 text-gold shrink-0" />
-          <p className="text-sm text-charcoal font-body">Database connection issue. Check your database setup.</p>
+          <p className="text-sm font-body" style={{ color: textPrimary }}>Database connection issue.</p>
         </div>
       )}
 
-      <div className="flex items-center gap-6 mb-6">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-sage/10 border border-sage/20" />
-          <span className="text-sm text-warm-gray font-body">Available</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-amber-50 border border-amber-200" />
-          <span className="text-sm text-warm-gray font-body">Few Slots</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-red-50 border border-red-200" />
-          <span className="text-sm text-warm-gray font-body">Unavailable</span>
+      {/* Color legend */}
+      <div className="flex flex-wrap items-center gap-3 mb-6">
+        {Object.entries(eventTypeColors).map(([type, colors]) => (
+          <div key={type} className="flex items-center gap-1.5">
+            <div className={`w-3 h-3 rounded-full ${colors.dot}`} />
+            <span className="text-xs font-body capitalize" style={{ color: textSecondary }}>{type.replace(/-/g, " ")}</span>
+          </div>
+        ))}
+        <div className="flex items-center gap-1.5 ml-3">
+          <Lock className="w-3 h-3 text-red-400" />
+          <span className="text-xs font-body" style={{ color: textSecondary }}>Blocked</span>
         </div>
       </div>
 
-      <Card>
-        <CardContent className="p-4 sm:p-6">
+      {/* Calendar grid */}
+      <div className="rounded-2xl overflow-hidden" style={{ background: bgCard, border: `1px solid ${borderColor}` }}>
+        <div className="p-4 sm:p-6">
           <div className="flex items-center justify-between mb-6">
-            <button onClick={() => navigateMonth(-1)} className="w-10 h-10 rounded-xl border border-border-light flex items-center justify-center hover:bg-cream transition-colors">
-              <ChevronLeft className="w-5 h-5 text-charcoal" />
+            <button onClick={() => navigateMonth(-1)} className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors" style={{ border: `1px solid ${borderColor}`, background: hoverBg }}>
+              <ChevronLeft className="w-5 h-5" style={{ color: textPrimary }} />
             </button>
-            <h2 className="text-lg font-heading font-semibold text-charcoal">{monthName}</h2>
-            <button onClick={() => navigateMonth(1)} className="w-10 h-10 rounded-xl border border-border-light flex items-center justify-center hover:bg-cream transition-colors">
-              <ChevronRight className="w-5 h-5 text-charcoal" />
+            <h2 className="text-lg font-heading font-semibold" style={{ color: textPrimary }}>{monthName}</h2>
+            <button onClick={() => navigateMonth(1)} className="w-10 h-10 rounded-xl flex items-center justify-center transition-colors" style={{ border: `1px solid ${borderColor}`, background: hoverBg }}>
+              <ChevronRight className="w-5 h-5" style={{ color: textPrimary }} />
             </button>
           </div>
 
           <div className="grid grid-cols-7 gap-1 mb-2">
             {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
-              <div key={day} className="text-center text-xs font-heading font-medium text-warm-gray py-2">{day}</div>
+              <div key={day} className="text-center text-xs font-heading font-medium py-2" style={{ color: textSecondary }}>{day}</div>
             ))}
           </div>
 
           <div className="grid grid-cols-7 gap-1">
             {calendarDays.map((day, index) => {
-              const status = day.isCurrentMonth ? getDayStatus(day) : "default";
+              const hasBookings = day.isCurrentMonth && day.bookings.length > 0;
+              const bookingEventTypes = day.bookings.map(b => b.event_type);
+              const uniqueTypes = [...new Set(bookingEventTypes)];
+
               return (
                 <button
                   key={index}
                   onClick={() => day.isCurrentMonth && setSelectedDay(day)}
                   disabled={!day.isCurrentMonth}
-                  className={`
-                    relative aspect-square rounded-xl border p-1 transition-all duration-200
-                    ${day.isCurrentMonth ? getStatusColor(status) : "bg-cream/30 border-transparent"}
-                    ${day.isToday ? "ring-2 ring-gold ring-offset-1" : ""}
-                    ${day.isCurrentMonth && day.bookings.length > 0 ? "cursor-pointer hover:shadow-md" : ""}
-                    ${day.isCurrentMonth && day.bookings.length === 0 ? "cursor-default" : ""}
-                  `}
+                  className="relative rounded-xl p-1.5 transition-all duration-200 min-h-[48px] sm:min-h-[64px]"
+                  style={{
+                    background: !day.isCurrentMonth ? dimBg : (day.blocked ? (isDark ? "#2A1515" : "#FEF2F2") : dayBg),
+                    border: `1px solid ${day.isCurrentMonth && day.isToday ? "#B8935F" : borderColor}`,
+                    cursor: day.isCurrentMonth ? "pointer" : "default",
+                  }}
                 >
-                  <span className={`text-xs font-body ${day.isCurrentMonth ? "text-charcoal" : "text-warm-gray/40"}`}>{day.day}</span>
-                  {day.isCurrentMonth && day.bookings.length > 0 && (
-                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2">
-                      <div className="flex gap-0.5">
-                        {day.bookings.slice(0, 3).map((_, i) => (
-                          <div key={i} className="w-1 h-1 rounded-full bg-gold" />
-                        ))}
+                  <span className="text-xs font-body block mb-1" style={{ color: day.isCurrentMonth ? textPrimary : textSecondary }}>{day.day}</span>
+
+                  {/* Booking count + color dots */}
+                  {hasBookings && (
+                    <div className="flex flex-col items-center gap-0.5">
+                      <span className="text-[9px] font-bold font-body" style={{ color: "#B8935F" }}>{day.bookings.length}</span>
+                      <div className="flex gap-0.5 justify-center flex-wrap max-w-[40px]">
+                        {uniqueTypes.slice(0, 4).map((eventType, i) => {
+                          const colors = getEventColor(eventType);
+                          return <div key={i} className={`w-2 h-2 rounded-full ${colors.dot}`} />;
+                        })}
                       </div>
                     </div>
                   )}
-                  {day.blocked && <Lock className="w-3 h-3 text-red-400 absolute top-1 right-1" />}
+
+                  {day.blocked && <Lock className="w-3 h-3 text-red-400 absolute top-0.5 right-0.5" />}
                 </button>
               );
             })}
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      <Dialog open={!!selectedDay} onOpenChange={() => setSelectedDay(null)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="font-heading text-charcoal">{selectedDay ? formatDate(selectedDay.date) : ""}</DialogTitle>
-            <DialogDescription className="text-warm-gray">
-              {selectedDay?.blocked ? "This date is blocked" : `${selectedDay?.bookings.length || 0} booking(s) on this date`}
-            </DialogDescription>
-          </DialogHeader>
-          {selectedDay && (
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <Button onClick={() => handleToggleBlock(selectedDay.date)} variant={selectedDay.blocked ? "default" : "destructive"} size="sm" className="gap-2">
-                  {selectedDay.blocked ? <><Unlock className="w-4 h-4" />Unblock Date</> : <><Lock className="w-4 h-4" />Block Date</>}
-                </Button>
-              </div>
-              {selectedDay.bookings.length > 0 ? (
-                <div className="space-y-3">
-                  {selectedDay.bookings.map((booking) => (
-                    <div key={booking.id} className="p-3 rounded-xl bg-cream border border-border-light">
+      {/* Day detail dialog */}
+      {selectedDay && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={() => setSelectedDay(null)}>
+          <div className="absolute inset-0 bg-charcoal/40" />
+          <div className="relative max-w-lg w-full rounded-2xl p-6 max-h-[80vh] overflow-y-auto" style={{ background: bgCard, border: `1px solid ${borderColor}` }} onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-heading font-semibold" style={{ color: textPrimary }}>{formatDate(selectedDay.date)}</h3>
+              <button onClick={() => setSelectedDay(null)} className="text-sm" style={{ color: textSecondary }}>✕</button>
+            </div>
+
+            <div className="flex items-center gap-3 mb-4">
+              <button
+                onClick={() => handleToggleBlock(selectedDay.date)}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-body transition-colors"
+                style={{
+                  background: selectedDay.blocked ? "rgba(91,117,83,0.1)" : "rgba(239,68,68,0.1)",
+                  color: selectedDay.blocked ? "#5B7553" : "#ef4444",
+                }}
+              >
+                {selectedDay.blocked ? <><Unlock className="w-3 h-3" />Unblock</> : <><Lock className="w-3 h-3" />Block</>}
+              </button>
+              <span className="text-xs font-body" style={{ color: textSecondary }}>{selectedDay.bookings.length} booking(s)</span>
+            </div>
+
+            {selectedDay.bookings.length > 0 ? (
+              <div className="space-y-3">
+                {selectedDay.bookings.map((booking) => {
+                  const colors = getEventColor(booking.event_type);
+                  return (
+                    <div key={booking.id} className="rounded-xl p-3" style={{ background: hoverBg, border: `1px solid ${borderColor}` }}>
                       <div className="flex items-center justify-between mb-2">
-                        <span className="font-heading font-medium text-sm text-charcoal">{booking.full_name}</span>
-                        <Badge className={getBookingStatusColor(booking.status)}>{getBookingStatusLabel(booking.status)}</Badge>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${colors.dot}`} />
+                          <span className="font-heading font-medium text-sm capitalize" style={{ color: textPrimary }}>{booking.full_name}</span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-body font-medium ${getBookingStatusColor(booking.status)}`}>
+                          {getBookingStatusLabel(booking.status)}
+                        </span>
                       </div>
-                      <div className="text-xs text-warm-gray font-body space-y-1">
-                        <p>{booking.event_type.replace(/-/g, " ")} • {formatTime(booking.preferred_time)}</p>
-                        <p>{booking.venue_address}</p>
+                      <div className="text-xs font-body" style={{ color: textSecondary }}>
+                        <p className="capitalize">{booking.event_type.replace(/-/g, " ")}</p>
+                        <p>{formatTime(booking.preferred_time)} • {booking.venue_address}</p>
                         <a href={`tel:${booking.phone}`} className="text-gold">{booking.phone}</a>
                       </div>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-warm-gray font-body text-center py-4">No bookings on this date</p>
-              )}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="text-sm font-body text-center py-4" style={{ color: textSecondary }}>No bookings on this date</p>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
