@@ -5,6 +5,7 @@ import {
   CalendarCheck, Clock, CheckCircle2, XCircle,
   AlertCircle, ArrowRight, Ticket, Sparkles, Bell, BellOff, Users
 } from "lucide-react";
+import { useAdminTheme } from "@/components/providers/AdminTheme";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface BookingData {
@@ -39,7 +40,6 @@ export default function AdminDashboard() {
   const [dbError, setDbError] = useState("");
   const [notificationsEnabled, setNotificationsEnabled] = useState(false);
   const [lastBookingCount, setLastBookingCount] = useState(0);
-  const [isDark, setIsDark] = useState(false);
 
   const pollingRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -47,7 +47,6 @@ export default function AdminDashboard() {
   useEffect(() => {
     try {
       const saved = localStorage.getItem("hfd_admin_dark");
-      setIsDark(saved === "true");
     } catch {}
   }, []);
 
@@ -130,13 +129,14 @@ export default function AdminDashboard() {
   };
 
   // Theme colors
-  const bgCard = isDark ? "#1A1A1A" : "#FFFFFF";
-  const bgPrimary = isDark ? "#0F0F0F" : "#FAF8F5";
-  const textPrimary = isDark ? "#E8E2DA" : "#1A1A1A";
-  const textSecondary = isDark ? "#9B9490" : "#6B6560";
-  const textMuted = isDark ? "#6B6560" : "#9B9490";
-  const borderColor = isDark ? "#2A2A2A" : "#E8E2DA";
-  const hoverBg = isDark ? "#222222" : "#F0EBE3";
+  const { theme } = useAdminTheme();
+  const bgCard = theme.bgCard;
+  const bgPrimary = theme.bgPrimary;
+  const textPrimary = theme.textPrimary;
+  const textSecondary = theme.textSecondary;
+  const textMuted = theme.textMuted;
+  const borderColor = theme.borderColor;
+  const hoverBg = theme.bgHover;
 
   return (
     <div className="p-4 sm:p-6 lg:p-8" style={{ background: bgPrimary }}>

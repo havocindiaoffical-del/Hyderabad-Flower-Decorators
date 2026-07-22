@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 import { ChevronLeft, ChevronRight, Lock, Unlock, AlertCircle } from "lucide-react";
+import { useAdminTheme } from "@/components/providers/AdminTheme";
 import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface BookingData {
@@ -56,12 +57,9 @@ export default function AdminCalendar() {
   const [blockedDates, setBlockedDates] = useState<Record<string, CalendarBlockData>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [dbReady, setDbReady] = useState(true);
-  const [isDark, setIsDark] = useState(false);
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("hfd_admin_dark");
-      setIsDark(saved === "true");
     } catch {}
   }, []);
 
@@ -138,14 +136,15 @@ export default function AdminCalendar() {
   const monthName = currentDate.toLocaleString("en-US", { month: "long", year: "numeric" });
 
   // Theme colors
-  const bgCard = isDark ? "#1A1A1A" : "#FFFFFF";
-  const bgPrimary = isDark ? "#0F0F0F" : "#FAF8F5";
-  const textPrimary = isDark ? "#E8E2DA" : "#1A1A1A";
-  const textSecondary = isDark ? "#9B9490" : "#6B6560";
-  const borderColor = isDark ? "#2A2A2A" : "#E8E2DA";
-  const hoverBg = isDark ? "#222222" : "#F0EBE3";
-  const dayBg = isDark ? "#1A1A1A" : "#FFFFFF";
-  const dimBg = isDark ? "#0F0F0F" : "#F0EBE3";
+  const { theme } = useAdminTheme();
+  const bgCard = theme.bgCard;
+  const bgPrimary = theme.bgPrimary;
+  const textPrimary = theme.textPrimary;
+  const textSecondary = theme.textSecondary;
+  const borderColor = theme.borderColor;
+  const hoverBg = theme.bgHover;
+  const dayBg = theme.bgCard;
+  const dimBg = theme.isDark ? "#0F0F0F" : "#F0EBE3";
 
   if (isLoading) {
     return (
@@ -215,7 +214,7 @@ export default function AdminCalendar() {
                   disabled={!day.isCurrentMonth}
                   className="relative rounded-xl p-1.5 transition-all duration-200 min-h-[48px] sm:min-h-[64px]"
                   style={{
-                    background: !day.isCurrentMonth ? dimBg : (day.blocked ? (isDark ? "#2A1515" : "#FEF2F2") : dayBg),
+                    background: !day.isCurrentMonth ? dimBg : (day.blocked ? (theme.isDark ? "#2A1515" : "#FEF2F2") : dayBg),
                     border: `1px solid ${day.isCurrentMonth && day.isToday ? "#B8935F" : borderColor}`,
                     cursor: day.isCurrentMonth ? "pointer" : "default",
                   }}

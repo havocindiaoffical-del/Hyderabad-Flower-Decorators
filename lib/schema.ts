@@ -67,5 +67,6 @@ export const businessSettings = pgTable("business_settings", {
   socialLinks: jsonb("social_links").$type<Record<string, string>>().default({}),
   brevoApiKey: varchar("brevo_api_key", { length: 100 }),
   brevoSenderEmail: varchar("brevo_sender_email", { length: 300 }),
+  siteContent: jsonb("site_content").$type<Record<string, unknown>>().default({}),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
