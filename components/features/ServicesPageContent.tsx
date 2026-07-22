@@ -5,54 +5,28 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Check, ArrowUpRight, Phone } from "lucide-react";
+import { useSiteContent } from "@/components/providers/SiteContent";
 
-const services = [
-  {
-    id: "housewarming", title: "Housewarming", desc: "Vibrant floral arrangements, traditional torans & elegant entrance decorations.",
-    features: ["Traditional toran & door decorations", "Entrance floral arches", "Rangoli & flower petal designs", "Living room centerpieces", "Puja room arrangements", "Balloon & floral combos"],
-    price: "₹5,000 — ₹25,000",
-    img: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=800&q=80"
-  },
-  {
-    id: "wedding", title: "Wedding", desc: "Stunning mandap decorations, floral arches & elaborate stage designs.",
-    features: ["Mandap decoration", "Stage & backdrop design", "Floral arches & walkways", "Reception centerpieces", "Car decoration", "Guest seating accents"],
-    price: "₹15,000 — ₹1,00,000+",
-    img: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80"
-  },
-  {
-    id: "baby-shower", title: "Baby Shower", desc: "Adorable themed decorations, balloon arrangements & photo booths.",
-    features: ["Themed balloon arches", "Photo booth setups", "Cake table decoration", "Welcome board design", "Centerpiece arrangements", "Cradle & crib decoration"],
-    price: "₹3,000 — ₹15,000",
-    img: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=800&q=80"
-  },
-  {
-    id: "pooja", title: "Pooja", desc: "Sacred and serene decorations for all religious ceremonies.",
-    features: ["Puja mandap decoration", "Floral garlands & malas", "Rangoli designs", "Deity decoration", "Sacred entrance torans", "Havan kund decoration"],
-    price: "₹3,000 — ₹20,000",
-    img: "https://images.unsplash.com/photo-1604762524889-3e2fcc145683?w=800&q=80"
-  },
-  {
-    id: "corporate", title: "Corporate", desc: "Professional floral decor for office inaugurations & brand activations.",
-    features: ["Office inauguration decor", "Stage & podium arrangements", "Reception desk florals", "Conference centerpieces", "Branded photo walls", "Festive celebrations"],
-    price: "₹10,000 — ₹50,000+",
-    img: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80"
-  },
-  {
-    id: "custom", title: "Custom", desc: "Unique vision? We bring your dream decorations to life.",
-    features: ["Custom theme design", "Rare flower sourcing", "Personalized concepts", "Reference matching", "3D mockup previews", "End-to-end execution"],
-    price: "Custom Quote",
-    img: "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80"
-  },
-];
+// Default images mapped by service id
+const serviceImages: Record<string, string> = {
+  housewarming: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=800&q=80",
+  wedding: "https://images.unsplash.com/photo-1519741497674-611481863552?w=800&q=80",
+  "baby-shower": "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=800&q=80",
+  pooja: "https://images.unsplash.com/photo-1604762524889-3e2fcc145683?w=800&q=80",
+  corporate: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?w=800&q=80",
+  custom: "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
+};
 
 export default function ServicesPageContent() {
+  const { content } = useSiteContent();
+
   return (
     <div className="pt-24 bg-ivory">
       <section className="py-20">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
-            <span className="label-uppercase text-gold mb-4 block">Services</span>
-            <h1 className="heading-hero text-charcoal">Crafting beauty for <em className="font-serif text-gold not-italic">every occasion</em></h1>
+            <span className="label-uppercase text-gold mb-4 block">{content.services_subtitle || "Services"}</span>
+            <h1 className="heading-hero text-charcoal">{content.services_title || "Our Services"}</h1>
             <p className="mt-6 text-stone font-light max-w-lg mx-auto">From intimate ceremonies to grand celebrations, tailored to your vision.</p>
           </motion.div>
         </div>
@@ -60,8 +34,9 @@ export default function ServicesPageContent() {
 
       <section className="pb-20">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
-          {services.map((s, i) => {
+          {content.services.map((s, i) => {
             const rev = i % 2 === 1;
+            const img = serviceImages[s.id] || serviceImages["custom"];
             return (
               <motion.div
                 key={s.id}
@@ -75,7 +50,7 @@ export default function ServicesPageContent() {
                   <div className={`lg:col-span-6 ${rev ? "lg:col-start-7 lg:row-start-1" : ""}`}>
                     <div className="aspect-[4/3] rounded-2xl overflow-hidden relative">
                       <Image
-                        src={s.img}
+                        src={img}
                         alt={s.title}
                         fill
                         className="object-cover"

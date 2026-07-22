@@ -3,24 +3,27 @@
 import React from "react";
 import { motion } from "framer-motion";
 import { Phone, Mail, MapPin, Clock, MessageCircle, Globe } from "lucide-react";
-
-const contacts = [
-  { icon: Phone, title: "Phone", value: "+91 98765 43210", href: "tel:+919876543210", desc: "Available 24/7" },
-  { icon: MessageCircle, title: "WhatsApp", value: "+91 98765 43210", href: "https://wa.me/919876543210", desc: "Quick responses" },
-  { icon: Mail, title: "Email", value: "info@hydflowerdecorators.com", href: "mailto:info@hydflowerdecorators.com", desc: "Detailed inquiries" },
-  { icon: MapPin, title: "Location", value: "Hyderabad, Telangana", href: "https://maps.google.com/?q=Hyderabad,Telangana", desc: "All areas served" },
-  { icon: Clock, title: "Hours", value: "24/7 Service", href: null, desc: "Always available" },
-  { icon: Globe, title: "Social", value: "@hydflowerdecorators", href: "https://instagram.com/hydflowerdecorators", desc: "Daily inspiration" },
-];
+import { useSiteContent } from "@/components/providers/SiteContent";
 
 export default function ContactPageContent() {
+  const { content } = useSiteContent();
+
+  const contacts = [
+    { icon: Phone, title: "Phone", value: "+91 98765 43210", href: "tel:+919876543210", desc: "Available 24/7" },
+    { icon: MessageCircle, title: "WhatsApp", value: "+91 98765 43210", href: "https://wa.me/919876543210", desc: "Quick responses" },
+    { icon: Mail, title: "Email", value: "info@hydflowerdecorators.com", href: "mailto:info@hydflowerdecorators.com", desc: "Detailed inquiries" },
+    { icon: MapPin, title: "Location", value: "Hyderabad, Telangana", href: "https://maps.google.com/?q=Hyderabad,Telangana", desc: "All areas served" },
+    { icon: Clock, title: "Hours", value: "24/7 Service", href: null, desc: "Always available" },
+    { icon: Globe, title: "Social", value: "@hydflowerdecorators", href: "https://instagram.com/hydflowerdecorators", desc: "Daily inspiration" },
+  ];
+
   return (
     <div className="pt-24 bg-ivory">
       <section className="py-20">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }}>
             <span className="label-uppercase text-gold mb-4 block">Contact</span>
-            <h1 className="heading-hero text-charcoal">Get in <em className="font-serif text-gold not-italic">touch</em></h1>
+            <h1 className="heading-hero text-charcoal">{content.contact_title || "Get in touch"}</h1>
           </motion.div>
         </div>
       </section>

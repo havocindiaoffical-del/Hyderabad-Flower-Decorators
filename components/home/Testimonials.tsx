@@ -3,22 +3,21 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-
-const testimonials = [
-  { id: 1, name: "Lakshmi Reddy", review: "Absolutely stunning decorations for our housewarming! Professional team, arrived on time, and the floral arrangements exceeded our expectations.", event: "Housewarming", initials: "LR" },
-  { id: 2, name: "Rajesh & Swathi", review: "Our wedding decoration was like a dream come true. The mandap was breathtaking and every guest was amazed.", event: "Wedding", initials: "RS" },
-  { id: 3, name: "Anitha Sharma", review: "The baby shower decorations were perfect! They matched our theme exactly and the balloon arrangements were adorable.", event: "Baby Shower", initials: "AS" },
-  { id: 4, name: "Venkat Prasad", review: "Amazing job on our corporate Diwali event. The office looked festive yet professional. Very cooperative team.", event: "Corporate", initials: "VP" },
-];
+import { useSiteContent } from "@/components/providers/SiteContent";
 
 export default function Testimonials() {
+  const { content } = useSiteContent();
+  const testimonials = content.testimonials || [];
   const [idx, setIdx] = useState(0);
   const [dir, setDir] = useState(0);
-  const paginate = useCallback((d: number) => { setDir(d); setIdx((p) => (p + d + testimonials.length) % testimonials.length); }, []);
+  const paginate = useCallback((d: number) => { setDir(d); setIdx((p) => (p + d + testimonials.length) % testimonials.length); }, [testimonials.length]);
 
   useEffect(() => { const t = setInterval(() => paginate(1), 7000); return () => clearInterval(t); }, [paginate]);
 
+  if (testimonials.length === 0) return null;
+
   const c = testimonials[idx];
+  const initials = c.name.split(" ").map(n => n[0]).join("");
 
   return (
     <section className="py-32 bg-charcoal relative overflow-hidden" id="testimonials">
@@ -29,7 +28,7 @@ export default function Testimonials() {
       <div className="max-w-[900px] mx-auto px-6 lg:px-12 text-center relative z-10">
         <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="mb-16">
           <span className="label-uppercase text-gold mb-4 block">Testimonials</span>
-          <h2 className="heading-section text-ivory">What our <em className="font-serif text-gold">clients</em> say</h2>
+          <h2 className="heading-section text-ivory">{content.testimonials_title || "What our clients say"}</h2>
         </motion.div>
 
         <div className="relative min-h-[200px]">
@@ -46,15 +45,15 @@ export default function Testimonials() {
                 ))}
               </div>
               <blockquote className="font-serif text-2xl sm:text-3xl text-ivory leading-relaxed italic mb-10">
-                "{c.review}"
+                &ldquo;{c.quote}&rdquo;
               </blockquote>
               <div className="flex items-center justify-center gap-4">
                 <div className="w-10 h-10 rounded-full border border-gold/30 flex items-center justify-center">
-                  <span className="text-gold text-xs font-serif">{c.initials}</span>
+                  <span className="text-gold text-xs font-serif">{initials}</span>
                 </div>
                 <div className="text-left">
                   <p className="text-ivory text-sm font-heading font-medium">{c.name}</p>
-                  <p className="text-ivory/40 text-xs font-body">{c.event}</p>
+                  <p className="text-ivory/40 text-xs font-body">{c.event_type}</p>
                 </div>
               </div>
             </motion.div>

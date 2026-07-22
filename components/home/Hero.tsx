@@ -5,8 +5,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ChevronDown } from "lucide-react";
 import { HeroFloralAnimation } from "@/components/floral/FloralAnimations";
+import { useSiteContent } from "@/components/providers/SiteContent";
 
 export default function Hero() {
+  const { content } = useSiteContent();
   const imageRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -19,6 +21,14 @@ export default function Hero() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Split the hero title into parts for styling
+  // The title format from content editor is like "Where passion meets creativity"
+  // We want to show it with the last word/phrase highlighted in gold italic
+  const heroTitle = content.hero.title;
+  // Split at the last space or line break to create emphasis
+  const titleParts = heroTitle.split("\n");
+  const hasMultipleLines = titleParts.length > 1;
 
   return (
     <section className="relative min-h-screen overflow-hidden bg-[#FAF8F5]">
@@ -90,7 +100,7 @@ export default function Hero() {
               <div className="flex items-center gap-3 mb-8 opacity-0 animate-[fadeUp_0.8s_0.2s_forwards]">
                 <div className="w-8 h-px bg-gold/60" />
                 <span className="label-uppercase text-gold tracking-[0.3em]">
-                  Est. 2018 · Hyderabad
+                  {content.hero.subtitle}
                 </span>
               </div>
 
@@ -106,18 +116,22 @@ export default function Hero() {
                   color: "#1A1A1A",
                 }}
               >
-                Flowers That Make
-                <br />
-                Every Moment{" "}
-                <em
-                  className="not-italic"
-                  style={{
-                    color: "#B8935F",
-                    fontStyle: "italic",
-                  }}
-                >
-                  Bloom.
-                </em>
+                {hasMultipleLines ? (
+                  titleParts.map((part, i) => (
+                    <React.Fragment key={i}>
+                      {i > 0 && <br />}
+                      {i === titleParts.length - 1 ? (
+                        <em className="not-italic" style={{ color: "#B8935F", fontStyle: "italic" }}>{part}</em>
+                      ) : (
+                        part
+                      )}
+                    </React.Fragment>
+                  ))
+                ) : (
+                  <>
+                    {heroTitle}
+                  </>
+                )}
               </h1>
 
               {/* Supporting text */}
@@ -131,8 +145,7 @@ export default function Hero() {
                   color: "#6B6560",
                 }}
               >
-                Bespoke floral design for weddings, celebrations, housewarmings,
-                and unforgettable moments across Hyderabad.
+                {content.hero.description}
               </p>
 
               {/* CTAs */}
@@ -150,7 +163,7 @@ export default function Hero() {
                     color: "#1A1A1A",
                   }}
                 >
-                  Book Your Event
+                  {content.cta_button_text || "Book Your Event"}
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
                 </Link>
                 <Link

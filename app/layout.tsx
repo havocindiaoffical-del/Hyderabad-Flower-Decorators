@@ -20,6 +20,7 @@ import FloatingActions from "@/components/layout/FloatingActions";
 import SmoothScroll from "@/components/providers/SmoothScroll";
 import CustomCursor from "@/components/ui/CustomCursor";
 import { UserAuthProvider } from "@/components/providers/UserAuth";
+import { SiteContentProvider } from "@/components/providers/SiteContent";
 import GlobalFloralOverlay from "@/components/floral/GlobalFloralOverlay";
 import TextRevealObserver from "@/components/features/TextRevealObserver";
 
@@ -49,6 +50,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-full flex flex-col bg-ivory text-charcoal font-body">
         <UserAuthProvider>
+          <SiteContentProvider>
           <SmoothScroll>
             <CustomCursor />
             <Navbar />
@@ -58,6 +60,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <GlobalFloralOverlay />
             <TextRevealObserver />
           </SmoothScroll>
+          </SiteContentProvider>
         </UserAuthProvider>
       </body>
     </html>
