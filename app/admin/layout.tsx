@@ -33,27 +33,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const [isAuthorized, setIsAuthorized] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Use refs so we never re-subscribe onAuthStateChanged due to value changes
   const pathnameRef = useRef(pathname);
   const routerRef = useRef(router);
   pathnameRef.current = pathname;
   routerRef.current = router;
 
-  const isLoginPage = pathname === "/admin/login";
-
   const handleLogout = useCallback(async () => {
-    try {
-      await signOut(auth);
-    } catch {
-      // ignore
-    }
+    try { await signOut(auth); } catch {}
     sessionStorage.removeItem(SESSION_KEY);
     routerRef.current.push("/admin/login");
   }, []);
 
   // ─── Firebase Auth listener (runs ONCE, never re-subscribes) ───────
   useEffect(() => {
-    // Ensure Firebase Auth persists across page loads
     setPersistence(auth, browserLocalPersistence).catch(() => {});
 
     let mounted = true;
@@ -69,11 +61,16 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setIsAuthorized(authorized);
 
         if (authorized) {
-          // Persist admin email in session storage as backup
           try { sessionStorage.setItem(SESSION_KEY, email); } catch {}
+
+          // ─── KEY FIX: Redirect logged-in admin away from login page ──
+          // If admin is already logged in and visits /admin/login or /admin root,
+          // redirect them to the dashboard immediately
+          if (pathnameRef.current === "/admin/login" || pathnameRef.current === "/admin" || pathnameRef.current === "/admin/") {
+            routerRef.current.replace("/admin/dashboard");
+          }
         } else {
           try { sessionStorage.removeItem(SESSION_KEY); } catch {}
-          // Not authorized — sign out and redirect (unless on login page)
           signOut(auth).catch(() => {});
           if (pathnameRef.current !== "/admin/login") {
             routerRef.current.replace("/admin/login?error=unauthorized");
@@ -82,7 +79,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       } else {
         setIsAuthorized(false);
         try { sessionStorage.removeItem(SESSION_KEY); } catch {}
-        // Only redirect if NOT on the login page
         if (pathnameRef.current !== "/admin/login") {
           routerRef.current.replace("/admin/login");
         }
@@ -91,16 +87,18 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       setAuthChecked(true);
     });
 
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, []); // ← EMPTY dependency array — never re-subscribes
+    return () => { mounted = false; unsubscribe(); };
+  }, []);
 
-  // ─── Login page: no layout chrome ─────────────────────────────────
-  if (isLoginPage) return <>{children}</>;
+  // ─── Login page: no layout chrome, but redirect if logged in ──────
+  if (pathname === "/admin/login" || pathname === "/admin" || pathname === "/admin/") {
+    // If auth is checked and user is authorized, redirect happened in the effect
+    // If not authorized, just render the login page
+    if (authChecked && user && isAuthorized) return null; // redirect is happening
+    return <>{children}</>;
+  }
 
-  // ─── Waiting for Firebase Auth to finish initial check ────────────
+  // ─── Waiting for Firebase Auth ─────────────────────────────────────
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-ivory flex items-center justify-center">

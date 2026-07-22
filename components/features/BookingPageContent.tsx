@@ -59,7 +59,34 @@ export default function BookingPageContent() {
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(fd.email)) e.email = "Invalid";
     if (!fd.event_type) e.event_type = "Required";
     if (!fd.event_date) e.event_date = "Required";
+    else {
+      // ─── Prevent past dates ────────────────────────────────────────
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const selected = new Date(fd.event_date + "T00:00:00");
+      if (selected < today) e.event_date = "Cannot select a past date";
+    }
     if (!fd.preferred_time) e.preferred_time = "Required";
+    else if (fd.event_date) {
+      // ─── Prevent past times for today ──────────────────────────────
+      const now = new Date();
+      const todayStr = now.toISOString().split("T")[0];
+      if (fd.event_date === todayStr) {
+        const currentHour = now.getHours();
+        const currentMinute = now.getMinutes();
+        const [slotH, slotM] = fd.preferred_time.split(":").map(Number);
+        // Add 2 hours buffer — cannot book a time less than 2 hours from now
+        if (slotH < currentHour || (slotH === currentHour && slotM <= currentMinute)) {
+          e.preferred_time = "This time slot has already passed";
+        } else if (slotH === currentHour + 1 && currentMinute > 0) {
+          // Less than 1 hour ahead — too close
+          e.preferred_time = "Please select a time at least 2 hours ahead";
+        } else if (slotH <= currentHour + 1) {
+          // Within 2 hours — require buffer for preparation
+          if (slotH < currentHour + 2) e.preferred_time = "Please select a time at least 2 hours ahead";
+        }
+      }
+    }
     if (!fd.venue_address.trim()) e.venue_address = "Required";
     setErrors(e);
     return !Object.keys(e).length;
@@ -220,8 +247,30 @@ export default function BookingPageContent() {
               <span className="label-uppercase text-gold mb-6 block">Event Details</span>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div><label className="block label-uppercase text-stone mb-2">Event Type *</label><Select value={fd.event_type} onValueChange={(v) => ch("event_type", v)}><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger><SelectContent>{eventTypes.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>{errors.event_type && <p className="mt-1 text-xs text-red-500">{errors.event_type}</p>}</div>
-                <div><label className="block label-uppercase text-stone mb-2">Date *</label><input type="date" value={fd.event_date} onChange={(e) => ch("event_date", e.target.value)} min={new Date().toISOString().split("T")[0]} className={inputCls} />{errors.event_date && <p className="mt-1 text-xs text-red-500">{errors.event_date}</p>}</div>
-                <div><label className="block label-uppercase text-stone mb-2">Preferred Time *</label><Select value={fd.preferred_time} onValueChange={(v) => ch("preferred_time", v)}><SelectTrigger><SelectValue placeholder="Select time" /></SelectTrigger><SelectContent>{timeSlots.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}</SelectContent></Select>{errors.preferred_time && <p className="mt-1 text-xs text-red-500">{errors.preferred_time}</p>}</div>
+                <div><label className="block label-uppercase text-stone mb-2">Date *</label><input type="date" value={fd.event_date} onChange={(e) => {
+                  const newDate = e.target.value;
+                  ch("event_date", newDate);
+                  // ─── If date changed to today and time is past, clear time ───
+                  const now = new Date();
+                  const todayStr = now.toISOString().split("T")[0];
+                  if (newDate === todayStr && fd.preferred_time) {
+                    const [slotH] = fd.preferred_time.split(":").map(Number);
+                    if (slotH < now.getHours() + 2) {
+                      ch("preferred_time", "");
+                    }
+                  }
+                }} min={new Date().toISOString().split("T")[0]} className={inputCls} />{errors.event_date && <p className="mt-1 text-xs text-red-500">{errors.event_date}</p>}</div>
+                <div><label className="block label-uppercase text-stone mb-2">Preferred Time *</label><Select value={fd.preferred_time} onValueChange={(v) => ch("preferred_time", v)}><SelectTrigger><SelectValue placeholder="Select time" /></SelectTrigger><SelectContent>{timeSlots.map((t) => {
+                  // ─── Disable past time slots for today's date ──────────
+                  const now = new Date();
+                  const todayStr = now.toISOString().split("T")[0];
+                  const isToday = fd.event_date === todayStr;
+                  const [slotH, slotM] = t.value.split(":").map(Number);
+                  const currentHour = now.getHours();
+                  // Disable slots that are less than 2 hours from now
+                  const isDisabled = isToday && slotH < currentHour + 2;
+                  return <SelectItem key={t.value} value={t.value} disabled={isDisabled}>{t.label}{isDisabled ? " (unavailable)" : ""}</SelectItem>;
+                })}</SelectContent></Select>{errors.preferred_time && <p className="mt-1 text-xs text-red-500">{errors.preferred_time}</p>}</div>
                 <div><label className="block label-uppercase text-stone mb-2">Budget</label><Select value={fd.estimated_budget} onValueChange={(v) => ch("estimated_budget", v)}><SelectTrigger><SelectValue placeholder="Select range" /></SelectTrigger><SelectContent>{budgetRanges.map((b) => <SelectItem key={b.value} value={b.value}>{b.label}</SelectItem>)}</SelectContent></Select></div>
               </div>
             </div>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Mail, Lock, Eye, EyeOff, ShieldAlert } from "lucide-react";
-import { signInWithEmailAndPassword, signInWithPopup, setPersistence, browserLocalPersistence } from "firebase/auth";
+import { signInWithEmailAndPassword, signInWithPopup, setPersistence, browserLocalPersistence, onAuthStateChanged } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
 
 // ─── ADMIN EMAIL WHITELIST (must match layout) ────────────────────
@@ -27,6 +27,19 @@ export default function AdminLoginPage() {
       setError("Access denied. This account is not authorized for admin access.");
     }
   }, [searchParams]);
+
+  // ─── Auto-redirect: if admin is already logged in, go to dashboard ──
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      if (firebaseUser) {
+        const email = firebaseUser.email?.toLowerCase() || "";
+        if (ADMIN_EMAILS.includes(email)) {
+          router.replace("/admin/dashboard");
+        }
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
 
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
