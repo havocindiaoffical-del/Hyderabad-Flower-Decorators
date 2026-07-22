@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback } from "react";
 
 import {
   Search, CheckCircle2, XCircle, Clock, Loader2,
-  ChevronLeft, ChevronRight, Phone, Mail, MapPin, Ticket
+  ChevronLeft, ChevronRight, Phone, Mail, MapPin, Ticket, Undo2
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,7 @@ interface BookingData {
   special_notes: string;
   images: string[];
   status: string;
+  previous_status?: string;
   user_uid?: string;
   admin_notes?: string;
   created_at: string;
@@ -85,9 +86,32 @@ export default function AdminBookings() {
         body: JSON.stringify({ bookingId, status, adminNotes }),
       });
       if (selectedBooking && selectedBooking.id === bookingId) {
-        setSelectedBooking({ ...selectedBooking, status, admin_notes: adminNotes || selectedBooking.admin_notes });
+        setSelectedBooking({
+          ...selectedBooking,
+          previous_status: selectedBooking.status,
+          status,
+          admin_notes: adminNotes || selectedBooking.admin_notes,
+        });
       }
       setAdminNotes("");
+      fetchBookings();
+    } catch { /* handle error */ } finally { setIsUpdating(false); }
+  };
+
+  const handleRevert = async (bookingId: string) => {
+    if (!selectedBooking?.previous_status) return;
+    setIsUpdating(true);
+    try {
+      await fetch("/api/admin/bookings", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ bookingId, status: selectedBooking.previous_status }),
+      });
+      setSelectedBooking({
+        ...selectedBooking,
+        status: selectedBooking.previous_status!,
+        previous_status: undefined,
+      });
       fetchBookings();
     } catch { /* handle error */ } finally { setIsUpdating(false); }
   };
@@ -226,7 +250,14 @@ export default function AdminBookings() {
           {selectedBooking && (
             <div className="space-y-6">
               <div className="flex items-center justify-between">
-                <Badge className={getBookingStatusColor(selectedBooking.status)}>{getBookingStatusLabel(selectedBooking.status)}</Badge>
+                <div className="flex items-center gap-3">
+                  <Badge className={getBookingStatusColor(selectedBooking.status)}>{getBookingStatusLabel(selectedBooking.status)}</Badge>
+                  {selectedBooking.previous_status && (
+                    <span className="text-xs text-warm-gray font-body flex items-center gap-1">
+                      (from <Badge className={`${getBookingStatusColor(selectedBooking.previous_status)} text-[10px] px-1.5 py-0`}>{getBookingStatusLabel(selectedBooking.previous_status)}</Badge>)
+                    </span>
+                  )}
+                </div>
                 <span className="text-xs text-warm-gray font-body">Created {formatDate(selectedBooking.created_at)}</span>
               </div>
 
@@ -341,8 +372,22 @@ export default function AdminBookings() {
                 </div>
               )}
 
-              {/* Status Actions */}
+              {/* Revert + Status Actions */}
               <div className="flex flex-wrap gap-3 pt-4 border-t border-border-light">
+                {/* Revert Button — only shown if there's a previous status */}
+                {selectedBooking.previous_status && (
+                  <Button
+                    onClick={() => handleRevert(selectedBooking.id!)}
+                    disabled={isUpdating}
+                    variant="outline"
+                    className="gap-2 border-stone text-stone hover:bg-stone/10 hover:text-charcoal"
+                  >
+                    {isUpdating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Undo2 className="w-4 h-4" />}
+                    Revert to {getBookingStatusLabel(selectedBooking.previous_status)}
+                  </Button>
+                )}
+
+                {/* Forward status buttons */}
                 {statusFlow[selectedBooking.status]?.map((nextStatus) => (
                   <Button
                     key={nextStatus}
@@ -363,6 +408,17 @@ export default function AdminBookings() {
                   </Button>
                 ))}
               </div>
+
+              {/* Revert explanation */}
+              {selectedBooking.previous_status && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-ivory border border-border-light">
+                  <Undo2 className="w-4 h-4 text-stone shrink-0 mt-0.5" />
+                  <p className="text-xs text-warm-gray font-body">
+                    This booking was recently changed from <strong className="text-charcoal">{getBookingStatusLabel(selectedBooking.previous_status)}</strong> to <strong className="text-charcoal">{getBookingStatusLabel(selectedBooking.status)}</strong>.
+                    Click "Revert" above to undo this change if it was made by mistake or too quickly.
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </DialogContent>

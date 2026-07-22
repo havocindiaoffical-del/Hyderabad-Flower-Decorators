@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/db-helpers";
 import { uploadBookingImage } from "@/lib/firebase-storage";
 
-// Owner email for notification
-const OWNER_EMAIL = "hydflowerdecorators@gmail.com";
-
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -98,72 +95,24 @@ export async function POST(request: NextRequest) {
       bookingId = `local-${Date.now()}`;
     }
 
-    // Try to send email notifications to BOTH customer and owner
+    // Send email notifications via Brevo to BOTH customer and owner
     try {
-      const { Resend } = await import("resend");
-      const resend = new Resend(process.env.RESEND_API_KEY);
-
-      // Email 1: Customer confirmation
-      await resend.emails.send({
-        from: "Hyderabad Flower Decorators <onboarding@resend.dev>",
-        to: email,
-        subject: `Booking Confirmed — Ticket ${ticket_id}`,
-        html: `
-          <div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="font-size: 24px; color: #1A1A1A; font-weight: 300;">HFD</h1>
-              <p style="color: #B8935F; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">Hyderabad Flower Decorators</p>
-            </div>
-            <h2 style="color: #1A1A1A; font-weight: 400;">Thank you, ${full_name}!</h2>
-            <p style="color: #6B6560; line-height: 1.6;">We've received your booking request. Our team will review it and get back to you within 2 hours.</p>
-            <div style="background: #FAF8F5; border: 1px solid #E8E2DA; border-radius: 12px; padding: 20px; margin: 20px 0; text-align: center;">
-              <p style="color: #6B6560; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; margin: 0;">Your Ticket ID</p>
-              <p style="color: #1A1A1A; font-size: 24px; font-weight: bold; letter-spacing: 0.05em; margin: 8px 0;">${ticket_id}</p>
-              <p style="color: #6B6560; font-size: 12px; margin: 0;">Save this to track your booking status at hyderabadflowerdecorators.netlify.app/track</p>
-            </div>
-            <div style="background: #FAF8F5; border-radius: 12px; padding: 20px; margin: 20px 0;">
-              <p style="margin: 0; color: #1A1A1A;"><strong>Event:</strong> ${event_type}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Date:</strong> ${event_date}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Time:</strong> ${preferred_time}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Venue:</strong> ${venue_address}</p>
-              ${estimated_budget ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Budget:</strong> ${estimated_budget}</p>` : ""}
-              ${guest_count ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Guests:</strong> ${guest_count}</p>` : ""}
-            </div>
-            <p style="color: #6B6560; font-size: 14px;">Need help? Call us at <a href="tel:+919876543210" style="color: #B8935F;">+91 98765 43210</a></p>
-          </div>
-        `,
+      const { sendBookingNotifications } = await import("@/lib/brevo-email");
+      const emailResult = await sendBookingNotifications({
+        full_name,
+        phone,
+        email,
+        event_type,
+        event_date,
+        preferred_time,
+        venue_address,
+        google_maps_link: google_maps_link || "",
+        estimated_budget: estimated_budget || "",
+        guest_count: guest_count || "",
+        special_notes: special_notes || "",
+        ticket_id,
       });
-
-      // Email 2: Owner notification
-      await resend.emails.send({
-        from: "Hyderabad Flower Decorators <onboarding@resend.dev>",
-        to: OWNER_EMAIL,
-        subject: `New Booking — ${ticket_id} — ${full_name}`,
-        html: `
-          <div style="font-family: system-ui; max-width: 600px; margin: 0 auto; padding: 20px;">
-            <div style="text-align: center; margin-bottom: 30px;">
-              <h1 style="font-size: 24px; color: #1A1A1A; font-weight: 300;">New Booking Received</h1>
-              <p style="color: #B8935F; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase;">${ticket_id}</p>
-            </div>
-            <div style="background: #FAF8F5; border: 1px solid #E8E2DA; border-radius: 12px; padding: 20px; margin: 20px 0;">
-              <p style="margin: 0; color: #1A1A1A;"><strong>Customer:</strong> ${full_name}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Phone:</strong> <a href="tel:${phone}" style="color: #B8935F;">${phone}</a></p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Email:</strong> <a href="mailto:${email}" style="color: #B8935F;">${email}</a></p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Event:</strong> ${event_type}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Date:</strong> ${event_date}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Time:</strong> ${preferred_time}</p>
-              <p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Venue:</strong> ${venue_address}</p>
-              ${google_maps_link ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Maps:</strong> <a href="${google_maps_link}" style="color: #B8935F;">Open Map</a></p>` : ""}
-              ${estimated_budget ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Budget:</strong> ${estimated_budget}</p>` : ""}
-              ${guest_count ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Guests:</strong> ${guest_count}</p>` : ""}
-              ${special_notes ? `<p style="margin: 8px 0 0; color: #1A1A1A;"><strong>Notes:</strong> ${special_notes}</p>` : ""}
-            </div>
-            <div style="text-align: center; margin: 20px 0;">
-              <a href="https://hyderabadflowerdecorators.netlify.app/admin/bookings" style="display: inline-block; background: #B8935F; color: #1A1A1A; padding: 12px 30px; border-radius: 30px; text-decoration: none; font-weight: 600; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;">View in Admin Panel</a>
-            </div>
-          </div>
-        `,
-      });
+      // Email status is logged silently — booking is still created regardless
     } catch {
       // Email failed — booking still created
     }

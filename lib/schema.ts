@@ -26,6 +26,7 @@ export const bookings = pgTable("bookings", {
   specialNotes: text("special_notes"),
   images: jsonb("images").$type<string[]>().default([]),
   status: varchar("status", { length: 20 }).notNull().default("pending"),
+  previousStatus: varchar("previous_status", { length: 20 }),
   userUid: varchar("user_uid", { length: 200 }),
   adminNotes: text("admin_notes"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -64,5 +65,7 @@ export const businessSettings = pgTable("business_settings", {
   brandColor: varchar("brand_color", { length: 20 }).default("#B8935F"),
   businessHours: jsonb("business_hours").$type<Record<string, string>>().default({}),
   socialLinks: jsonb("social_links").$type<Record<string, string>>().default({}),
+  brevoApiKey: varchar("brevo_api_key", { length: 100 }),
+  brevoSenderEmail: varchar("brevo_sender_email", { length: 300 }),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });

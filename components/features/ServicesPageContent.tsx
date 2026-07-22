@@ -21,7 +21,7 @@ const services = [
   },
   {
     id: "baby-shower", title: "Baby Shower", desc: "Adorable themed decorations, balloon arrangements & photo booths.",
-    features: ["Themed balloon arches", "Photo booth setups", "Cake table decoration", "Welcome board design", "Centerpiece arrangements", "Gender reveal setups"],
+    features: ["Themed balloon arches", "Photo booth setups", "Cake table decoration", "Welcome board design", "Centerpiece arrangements", "Cradle & crib decoration"],
     price: "₹3,000 — ₹15,000",
     img: "https://images.unsplash.com/photo-1549488344-1f9b8d2bd1f3?w=800&q=80"
   },

@@ -22,6 +22,7 @@ export interface BookingData {
   special_notes: string;
   images: string[];
   status: BookingStatus;
+  previous_status?: string;
   user_uid?: string;
   admin_notes?: string;
   created_at: string;
@@ -54,6 +55,8 @@ export interface BusinessSettingsData {
   brand_color: string;
   business_hours: Record<string, string>;
   social_links: Record<string, string>;
+  brevo_api_key?: string;
+  brevo_sender_email?: string;
   updated_at?: string;
 }
 
@@ -160,8 +163,13 @@ export async function getRecentBookings(count: number): Promise<BookingData[]> {
 }
 
 export async function updateBookingStatus(id: string, status: string, adminNotes?: string): Promise<void> {
+  // First, get the current status to save as previous_status
+  const current = await getDb().select({ status: bookings.status }).from(bookings).where(eq(bookings.id, Number(id))).limit(1);
+  const currentStatus = current[0]?.status || "pending";
+
   const updateData: Record<string, unknown> = {
     status,
+    previousStatus: currentStatus,
     updatedAt: new Date(),
   };
   if (adminNotes) {
@@ -285,6 +293,8 @@ export async function getBusinessSettings(): Promise<BusinessSettingsData | null
     brand_color: r.brandColor || "#B8935F",
     business_hours: (r.businessHours as Record<string, string>) || {},
     social_links: (r.socialLinks as Record<string, string>) || {},
+    brevo_api_key: r.brevoApiKey || "",
+    brevo_sender_email: r.brevoSenderEmail || "",
     updated_at: r.updatedAt?.toISOString(),
   };
 }
@@ -299,6 +309,8 @@ export async function saveBusinessSettings(data: BusinessSettingsData): Promise<
     brandColor: data.brand_color,
     businessHours: data.business_hours,
     socialLinks: data.social_links,
+    brevoApiKey: data.brevo_api_key || null,
+    brevoSenderEmail: data.brevo_sender_email || null,
     updatedAt: new Date(),
   };
 
@@ -309,6 +321,20 @@ export async function saveBusinessSettings(data: BusinessSettingsData): Promise<
   } else {
     await getDb().insert(businessSettings).values(payload);
   }
+}
+
+// ─── Brevo API Key Helper ──────────────────────────────────────────
+
+export async function getBrevoConfig(): Promise<{ apiKey: string; senderEmail: string }> {
+  const result = await getDb().select({
+    apiKey: businessSettings.brevoApiKey,
+    senderEmail: businessSettings.brevoSenderEmail,
+  }).from(businessSettings).limit(1);
+  if (result.length === 0) return { apiKey: "", senderEmail: "" };
+  return {
+    apiKey: result[0].apiKey || "",
+    senderEmail: result[0].senderEmail || "",
+  };
 }
 
 // ─── Row Mapper ───────────────────────────────────────────────────
@@ -330,6 +356,7 @@ function rowToBooking(row: typeof bookings.$inferSelect): BookingData {
     special_notes: row.specialNotes || "",
     images: (row.images as string[]) || [],
     status: row.status as BookingStatus,
+    previous_status: row.previousStatus || undefined,
     user_uid: row.userUid || undefined,
     admin_notes: row.adminNotes || undefined,
     created_at: row.createdAt.toISOString(),
