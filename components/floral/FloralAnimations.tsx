@@ -6,10 +6,14 @@ import {
   Rose3D, RosePetal, Jasmine3D, Marigold3D, Leaf3D,
   BotanicalStem3D, Vine3D, FlowerBud3D, GoldPetal,
 } from "./FloralElements";
+import {
+  BigRose3D, BigMarigold3D, BigJasmineCluster3D, BigLeaf3D,
+  BigVine3D, BigFlowerCluster3D, BigPetal3D, BigGoldPetal3D,
+} from "./BigFloralElements";
 import { useReducedMotion, useMousePosition, useIsMobile } from "./hooks";
 
-// ─── Hero 3D Flower Animation ──────────────────────────────────────
-// 2–4 subtle 3D floral elements in the hero with mouse parallax
+// ─── Hero 3D Flower Animation (BIG flowers) ─────────────────────────
+// 6 prominent 3D floral elements in the hero with mouse parallax
 
 export function HeroFloralAnimation() {
   const reduced = useReducedMotion();
@@ -18,97 +22,123 @@ export function HeroFloralAnimation() {
 
   if (reduced) return null;
 
-  // Parallax offsets — extremely gentle
   const baseX = useSpring(useMotionValue(0), { stiffness: 40, damping: 30 });
   const baseY = useSpring(useMotionValue(0), { stiffness: 40, damping: 30 });
 
   useEffect(() => {
-    baseX.set((mouse.x - 0.5) * 20); // ±10px max
-    baseY.set((mouse.y - 0.5) * 15); // ±7.5px max
+    baseX.set((mouse.x - 0.5) * 30);
+    baseY.set((mouse.y - 0.5) * 20);
   }, [mouse.x, mouse.y, baseX, baseY]);
 
-  const x1 = useTransform(baseX, (v: number) => v * 0.5);
-  const y1 = useTransform(baseY, (v: number) => v * 0.3);
-  const x2 = useTransform(baseX, (v: number) => v * -0.8);
-  const y2 = useTransform(baseY, (v: number) => v * -0.5);
-  const x3 = useTransform(baseX, (v: number) => v * 0.3);
-  const y3 = useTransform(baseY, (v: number) => v * 0.6);
-  const x4 = useTransform(baseX, (v: number) => v * -0.4);
-  const y4 = useTransform(baseY, (v: number) => v * -0.2);
+  const x1 = useTransform(baseX, (v: number) => v * 0.6);
+  const y1 = useTransform(baseY, (v: number) => v * 0.4);
+  const x2 = useTransform(baseX, (v: number) => v * -1.0);
+  const y2 = useTransform(baseY, (v: number) => v * -0.6);
+  const x3 = useTransform(baseX, (v: number) => v * 0.4);
+  const y3 = useTransform(baseY, (v: number) => v * 0.7);
+  const x4 = useTransform(baseX, (v: number) => v * -0.5);
+  const y4 = useTransform(baseY, (v: number) => v * -0.25);
+  const x5 = useTransform(baseX, (v: number) => v * 0.3);
+  const y5 = useTransform(baseY, (v: number) => v * 0.5);
+  const x6 = useTransform(baseX, (v: number) => v * -0.35);
+  const y6 = useTransform(baseY, (v: number) => v * -0.3);
 
-  // Mobile: fewer elements
-  const elements = isMobile ? 2 : 4;
+  const elCount = isMobile ? 3 : 6;
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]" style={{ perspective: "800px" }}>
-      {/* Rose near headline — left side */}
-      {elements >= 1 && (
+      {/* 1. BIG Rose — left of headline */}
+      {elCount >= 1 && (
         <motion.div
-          className="absolute top-[28%] left-[4%] sm:left-[8%]"
+          className="absolute top-[22%] left-[2%] sm:left-[5%]"
           style={{ x: x1, y: y1 }}
-          initial={{ opacity: 0, rotateY: 30, rotateX: -10 }}
-          animate={{ opacity: 0.55, rotateY: 0, rotateX: 0 }}
-          transition={{ duration: 2.5, delay: 0.8, ease: "easeOut" }}
+          initial={{ opacity: 0, rotateY: 25, rotateX: -8, scale: 0.7 }}
+          animate={{ opacity: 0.45, rotateY: 0, rotateX: 0, scale: 1 }}
+          transition={{ duration: 2.5, delay: 0.6, ease: "easeOut" }}
         >
-          <motion.div
-            animate={{ rotateZ: [0, 2, 0, -2, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Rose3D size={isMobile ? 28 : 36} />
+          <motion.div animate={{ rotateZ: [0, 3, 0, -3, 0] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
+            <BigRose3D size={isMobile ? 60 : 100} />
           </motion.div>
         </motion.div>
       )}
 
-      {/* Delicate leaf near image edge — right */}
-      {elements >= 2 && (
+      {/* 2. BIG Leaf — right near image */}
+      {elCount >= 2 && (
         <motion.div
-          className="absolute top-[18%] right-[2%] sm:right-[5%] lg:right-[8%]"
+          className="absolute top-[14%] right-[1%] sm:right-[3%] lg:right-[6%]"
           style={{ x: x2, y: y2 }}
-          initial={{ opacity: 0, rotateY: -20, scale: 0.8 }}
-          animate={{ opacity: 0.4, rotateY: 0, scale: 1 }}
-          transition={{ duration: 2, delay: 1.2, ease: "easeOut" }}
-        >
-          <motion.div
-            animate={{ rotateZ: [0, -3, 0, 3, 0] }}
-            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <Leaf3D size={isMobile ? 22 : 32} />
-          </motion.div>
-        </motion.div>
-      )}
-
-      {/* Floating petal in background — center-right */}
-      {elements >= 3 && (
-        <motion.div
-          className="absolute top-[55%] right-[25%] lg:right-[30%]"
-          style={{ x: x3, y: y3 }}
-          initial={{ opacity: 0, rotateY: 45, scale: 0.7 }}
+          initial={{ opacity: 0, rotateY: -15, scale: 0.8 }}
           animate={{ opacity: 0.35, rotateY: 0, scale: 1 }}
-          transition={{ duration: 2.2, delay: 1.5, ease: "easeOut" }}
+          transition={{ duration: 2.2, delay: 1.0, ease: "easeOut" }}
         >
-          <motion.div
-            animate={{ rotateZ: [0, 5, 0, -5, 0], y: [0, -6, 0] }}
-            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <RosePetal size={isMobile ? 16 : 22} />
+          <motion.div animate={{ rotateZ: [0, -4, 0, 4, 0] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}>
+            <BigLeaf3D size={isMobile ? 50 : 70} />
           </motion.div>
         </motion.div>
       )}
 
-      {/* Small gold petal — bottom-left */}
-      {elements >= 4 && (
+      {/* 3. BIG Floating Petal — center background */}
+      {elCount >= 3 && (
         <motion.div
-          className="absolute bottom-[20%] left-[15%] lg:left-[20%]"
+          className="absolute top-[50%] right-[18%] lg:right-[28%]"
+          style={{ x: x3, y: y3 }}
+          initial={{ opacity: 0, rotateY: 40, scale: 0.6 }}
+          animate={{ opacity: 0.32, rotateY: 0, scale: 1 }}
+          transition={{ duration: 2.4, delay: 1.3, ease: "easeOut" }}
+        >
+          <motion.div animate={{ rotateZ: [0, 6, 0, -6, 0], y: [0, -10, 0] }}
+            transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}>
+            <BigPetal3D size={isMobile ? 30 : 48} />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* 4. Jasmine cluster — bottom-left of hero */}
+      {elCount >= 4 && (
+        <motion.div
+          className="absolute bottom-[18%] left-[10%] lg:left-[14%]"
           style={{ x: x4, y: y4 }}
-          initial={{ opacity: 0, rotateX: 20 }}
-          animate={{ opacity: 0.3, rotateX: 0 }}
+          initial={{ opacity: 0, rotateX: 18, scale: 0.6 }}
+          animate={{ opacity: 0.30, rotateX: 0, scale: 1 }}
+          transition={{ duration: 2, delay: 1.5, ease: "easeOut" }}
+        >
+          <motion.div animate={{ rotateZ: [0, -3, 0, 3, 0] }}
+            transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}>
+            <BigJasmineCluster3D size={isMobile ? 55 : 80} />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* 5. Gold Petal — mid-right */}
+      {elCount >= 5 && (
+        <motion.div
+          className="absolute top-[35%] right-[10%] lg:right-[15%]"
+          style={{ x: x5, y: y5 }}
+          initial={{ opacity: 0, rotateX: 25, scale: 0.5 }}
+          animate={{ opacity: 0.28, rotateX: 0, scale: 1 }}
           transition={{ duration: 2, delay: 1.8, ease: "easeOut" }}
         >
-          <motion.div
-            animate={{ rotateZ: [0, -4, 0, 4, 0] }}
-            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-          >
-            <GoldPetal size={16} />
+          <motion.div animate={{ rotateZ: [0, 5, 0, -5, 0] }}
+            transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
+            <BigGoldPetal3D size={isMobile ? 28 : 40} />
+          </motion.div>
+        </motion.div>
+      )}
+
+      {/* 6. Small rose accent — top-right corner */}
+      {elCount >= 6 && (
+        <motion.div
+          className="absolute top-[8%] right-[22%] lg:right-[25%]"
+          style={{ x: x6, y: y6 }}
+          initial={{ opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 0.22, scale: 1 }}
+          transition={{ duration: 2, delay: 2.0, ease: "easeOut" }}
+        >
+          <motion.div animate={{ rotateZ: [0, 2, 0, -2, 0] }}
+            transition={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}>
+            <Rose3D size={42} />
           </motion.div>
         </motion.div>
       )}
@@ -116,8 +146,7 @@ export function HeroFloralAnimation() {
   );
 }
 
-// ─── Section Floral Transition ──────────────────────────────────────
-// Flowers that drift between sections on scroll
+// ─── Section Floral Transition (BIG) ────────────────────────────────
 
 interface SectionTransitionProps {
   variant: "hero-services" | "services-occasions" | "occasions-garlands" | "garlands-gallery" | "gallery-booking";
@@ -133,30 +162,30 @@ export function SectionFloralTransition({ variant }: SectionTransitionProps) {
   const config: Record<string, { elements: React.ReactNode[]; direction: string }> = {
     "hero-services": {
       elements: isMobile
-        ? [<Rose3D size={24} />, <Leaf3D size={18} />]
-        : [<Rose3D size={32} />, <Leaf3D size={24} />, <RosePetal size={16} />],
+        ? [<BigRose3D size={60} />, <Leaf3D size={30} />]
+        : [<BigRose3D size={80} />, <BigLeaf3D size={50} />, <BigPetal3D size={30} />],
       direction: "down",
     },
     "services-occasions": {
       elements: isMobile
-        ? [<RosePetal size={14} />, <RosePetal size={12} />]
-        : [<RosePetal size={18} />, <RosePetal size={14} />, <GoldPetal size={12} />],
+        ? [<BigPetal3D size={28} />, <BigGoldPetal3D size={26} />]
+        : [<BigPetal3D size={36} />, <BigGoldPetal3D size={34} />, <BigPetal3D size={24} />],
       direction: "across",
     },
     "occasions-garlands": {
       elements: isMobile
-        ? [<Jasmine3D size={22} />, <Marigold3D size={24} />]
-        : [<Jasmine3D size={28} />, <Marigold3D size={30} />, <RosePetal size={14} />],
+        ? [<BigJasmineCluster3D size={60} />, <BigMarigold3D size={55} />]
+        : [<BigJasmineCluster3D size={80} />, <BigMarigold3D size={70} />, <BigPetal3D size={26} />],
       direction: "across-reverse",
     },
     "garlands-gallery": {
-      elements: [<Vine3D size={isMobile ? 50 : 80} />],
+      elements: [<BigVine3D size={isMobile ? 80 : 140} />],
       direction: "curved",
     },
     "gallery-booking": {
       elements: isMobile
-        ? [<Rose3D size={24} />, <FlowerBud3D size={16} />]
-        : [<Rose3D size={30} />, <FlowerBud3D size={18} />, <Jasmine3D size={22} />],
+        ? [<BigFlowerCluster3D size={70} />]
+        : [<BigFlowerCluster3D size={100} />, <BigGoldPetal3D size={30} />],
       direction: "cluster",
     },
   };
@@ -168,13 +197,13 @@ export function SectionFloralTransition({ variant }: SectionTransitionProps) {
     "across": "flex-row items-center gap-6",
     "across-reverse": "flex-row-reverse items-center gap-6",
     "curved": "flex-row items-center gap-4",
-    "cluster": "flex-wrap items-center justify-center gap-3",
+    "cluster": "flex-wrap items-center justify-center gap-4",
   };
 
   return (
     <motion.div
       ref={ref}
-      className={`relative h-16 sm:h-24 flex ${posStyles[direction]} justify-center pointer-events-none overflow-hidden`}
+      className={`relative h-20 sm:h-32 flex ${posStyles[direction]} justify-center pointer-events-none overflow-hidden`}
       style={{ perspective: "600px" }}
       initial={{ opacity: 0 }}
       whileInView={{ opacity: 1 }}
@@ -184,15 +213,13 @@ export function SectionFloralTransition({ variant }: SectionTransitionProps) {
       {els.map((el, i) => (
         <motion.div
           key={i}
-          initial={{ opacity: 0, y: direction === "down" ? -20 : 0, x: direction === "across" || direction === "across-reverse" ? 30 : 0, rotateZ: -5, scale: 0.7 }}
-          whileInView={{ opacity: 0.4, y: 0, x: 0, rotateZ: 0, scale: 1 }}
+          initial={{ opacity: 0, y: direction === "down" ? -25 : 0, x: direction === "across" || direction === "across-reverse" ? 35 : 0, rotateZ: -8, scale: 0.6 }}
+          whileInView={{ opacity: 0.45, y: 0, x: 0, rotateZ: 0, scale: 1 }}
           viewport={{ once: false, amount: 0.3 }}
-          transition={{ duration: 1.8, delay: i * 0.3, ease: "easeOut" }}
+          transition={{ duration: 2, delay: i * 0.35, ease: "easeOut" }}
         >
-          <motion.div
-            animate={{ rotateZ: [0, 2, 0, -2, 0] }}
-            transition={{ duration: 8 + i * 2, repeat: Infinity, ease: "easeInOut" }}
-          >
+          <motion.div animate={{ rotateZ: [0, 2.5, 0, -2.5, 0] }}
+            transition={{ duration: 10 + i * 2, repeat: Infinity, ease: "easeInOut" }}>
             {el}
           </motion.div>
         </motion.div>
@@ -202,30 +229,23 @@ export function SectionFloralTransition({ variant }: SectionTransitionProps) {
 }
 
 // ─── Scroll-linked Floral Element ──────────────────────────────────
-// Individual flower that animates based on scroll position
 
 interface ScrollFlowerProps {
   flower: React.ReactNode;
-  startY: string;  // CSS top position
-  startX: string;  // CSS left/right position
+  startY: string;
+  startX: string;
   side?: "left" | "right";
-  scrollRange?: [number, number]; // viewport progress range where visible
-  rotationDeg?: number; // total rotation over scroll
-  driftY?: number; // vertical drift px over scroll
-  driftX?: number; // horizontal drift px over scroll
+  scrollRange?: [number, number];
+  rotationDeg?: number;
+  driftY?: number;
+  driftX?: number;
   opacityRange?: [number, number];
 }
 
 export function ScrollFloralElement({
-  flower,
-  startY,
-  startX,
-  side = "left",
-  scrollRange = [0.1, 0.6],
-  rotationDeg = 180,
-  driftY = 40,
-  driftX = 15,
-  opacityRange = [0.3, 0.5],
+  flower, startY, startX, side = "left",
+  scrollRange = [0.1, 0.6], rotationDeg = 180,
+  driftY = 40, driftX = 15, opacityRange = [0.3, 0.5],
 }: ScrollFlowerProps) {
   const reduced = useReducedMotion();
   if (reduced) return null;
@@ -249,18 +269,15 @@ export function ScrollFloralElement({
       viewport={{ once: false, amount: 0.2 }}
       transition={{ duration: 1.2, ease: "easeOut" }}
     >
-      <motion.div
-        animate={{ rotateZ: [0, 1.5, 0, -1.5, 0] }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
-      >
+      <motion.div animate={{ rotateZ: [0, 1.5, 0, -1.5, 0] }}
+        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
         {flower}
       </motion.div>
     </motion.div>
   );
 }
 
-// ─── Floating Petals System ────────────────────────────────────────
-// 3–10 subtle floating petals that move slowly, rotate, and fade
+// ─── Floating Petals (BIGGER) ───────────────────────────────────────
 
 export function FloatingPetals({ count = 5 }: { count?: number }) {
   const reduced = useReducedMotion();
@@ -269,41 +286,36 @@ export function FloatingPetals({ count = 5 }: { count?: number }) {
 
   const actualCount = isMobile ? Math.min(count, 3) : count;
 
-  const petalTypes = [RosePetal, GoldPetal, RosePetal, GoldPetal, RosePetal];
-  const petalSizes = [16, 14, 18, 12, 15];
+  const petalTypes = [BigPetal3D, BigGoldPetal3D, BigPetal3D, BigGoldPetal3D, BigPetal3D, RosePetal, GoldPetal];
+  const petalSizes = [38, 34, 42, 30, 36, 18, 16];
 
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden" style={{ perspective: "1000px" }}>
       {Array.from({ length: actualCount }).map((_, i) => {
         const Petal = petalTypes[i % petalTypes.length];
         const size = petalSizes[i % petalSizes.length];
-        const leftPos = `${10 + i * 18}%`;
-        const topStart = `${5 + i * 15}%`;
-        const duration = 15 + i * 4;
-        const delay = i * 2;
-        const driftX = (i % 2 === 0 ? 1 : -1) * (8 + i * 3);
-        const driftY = 20 + i * 8;
+        const leftPos = `${8 + i * 17}%`;
+        const topStart = `${5 + i * 12}%`;
+        const duration = 18 + i * 5;
+        const delay = i * 2.5;
+        const driftX = (i % 2 === 0 ? 1 : -1) * (10 + i * 4);
+        const driftY = 25 + i * 10;
 
         return (
           <motion.div
             key={i}
             className="absolute"
             style={{ left: leftPos, top: topStart }}
-            initial={{ opacity: 0, scale: 0.6 }}
+            initial={{ opacity: 0, scale: 0.5 }}
             animate={{
-              opacity: [0, 0.3, 0.35, 0.2, 0],
+              opacity: [0, 0.28, 0.35, 0.2, 0],
               y: [0, driftY * 0.3, driftY * 0.6, driftY * 0.8, driftY],
               x: [0, driftX * 0.2, driftX * 0.4, driftX * 0.3, driftX * 0.5],
-              rotateZ: [0, 45 + i * 15, 90 + i * 20, 135 + i * 10, 180 + i * 15],
-              rotateY: [0, 10, 0, -10, 0],
-              scale: [0.6, 0.8, 1, 0.9, 0.5],
+              rotateZ: [0, 45 + i * 20, 90 + i * 25, 135 + i * 15, 180 + i * 20],
+              rotateY: [0, 12, 0, -12, 0],
+              scale: [0.5, 0.75, 1, 0.85, 0.4],
             }}
-            transition={{
-              duration,
-              delay,
-              repeat: Infinity,
-              ease: "easeInOut",
-            }}
+            transition={{ duration, delay, repeat: Infinity, ease: "easeInOut" }}
           >
             <Petal size={size} />
           </motion.div>
@@ -314,7 +326,6 @@ export function FloatingPetals({ count = 5 }: { count?: number }) {
 }
 
 // ─── Interactive Hover Flower ───────────────────────────────────────
-// Flower that responds gently to hover
 
 interface InteractiveFlowerProps {
   flower: React.ReactNode;
@@ -327,26 +338,18 @@ export function InteractiveFlower({ flower, className = "" }: InteractiveFlowerP
   return (
     <motion.div
       className={`pointer-events-auto cursor-default ${className}`}
-      whileHover={reduced ? {} : {
-        scale: 1.05,
-        rotateZ: 3,
-        y: -3,
-      }}
+      whileHover={reduced ? {} : { scale: 1.05, rotateZ: 3, y: -3 }}
       transition={{ duration: 0.6, ease: "easeOut" }}
     >
-      <motion.div
-        animate={reduced ? {} : { rotateZ: [0, 1, 0, -1, 0] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-      >
+      <motion.div animate={reduced ? {} : { rotateZ: [0, 1, 0, -1, 0] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}>
         {flower}
       </motion.div>
     </motion.div>
   );
 }
 
-// ─── Scroll-based Floral Journey ───────────────────────────────────
-// Comprehensive system that places flowers across the entire page
-// based on scroll progress
+// ─── Floral Journey (BIG flowers across entire page) ────────────────
 
 export function FloralJourney() {
   const reduced = useReducedMotion();
@@ -354,27 +357,28 @@ export function FloralJourney() {
   if (reduced) return null;
 
   const flowerPlacements = isMobile ? [
-    { flower: <Rose3D size={24} />, y: "5%", x: "5%", side: "left" as const, rotation: 120, driftY: 30, driftX: 10 },
-    { flower: <Leaf3D size={20} />, y: "25%", x: "8%", side: "right" as const, rotation: 90, driftY: 30, driftX: 10 },
-    { flower: <Jasmine3D size={20} />, y: "45%", x: "3%", side: "left" as const, rotation: 60, driftY: 20, driftX: 15 },
-    { flower: <Marigold3D size={24} />, y: "65%", x: "6%", side: "right" as const, rotation: 90, driftY: 25, driftX: 10 },
-    { flower: <FlowerBud3D size={14} />, y: "85%", x: "5%", side: "left" as const, rotation: 60, driftY: 15, driftX: 10 },
+    { flower: <BigRose3D size={70} />, y: "5%", x: "3%", side: "left" as const, rotation: 120, driftY: 35, driftX: 12 },
+    { flower: <BigLeaf3D size={55} />, y: "25%", x: "5%", side: "right" as const, rotation: 90, driftY: 30, driftX: 14 },
+    { flower: <BigJasmineCluster3D size={60} />, y: "45%", x: "2%", side: "left" as const, rotation: 60, driftY: 25, driftX: 18 },
+    { flower: <BigMarigold3D size={60} />, y: "65%", x: "4%", side: "right" as const, rotation: 90, driftY: 28, driftX: 12 },
+    { flower: <BigPetal3D size={35} />, y: "85%", x: "3%", side: "left" as const, rotation: 60, driftY: 18, driftX: 10 },
   ] : [
-    // Near hero — rose drifts and rotates
-    { flower: <Rose3D size={36} />, y: "5%", x: "6%", side: "left" as const, rotation: 180, driftY: 50, driftX: 10 },
-    // Services area — leaf enters
-    { flower: <Leaf3D size={32} />, y: "18%", x: "8%", side: "right" as const, rotation: 90, driftY: 30, driftX: 15 },
-    // Occasions — petals drift diagonally
-    { flower: <RosePetal size={22} />, y: "30%", x: "4%", side: "left" as const, rotation: 120, driftY: 25, driftX: 20 },
-    // Garland section — jasmine
-    { flower: <Jasmine3D size={28} />, y: "42%", x: "7%", side: "right" as const, rotation: 60, driftY: 20, driftX: 12 },
-    // Gallery — botanical stem reveals
-    { flower: <BotanicalStem3D size={50} />, y: "55%", x: "5%", side: "left" as const, rotation: 45, driftY: 20, driftX: 8 },
-    // CTA — marigold settles
-    { flower: <Marigold3D size={30} />, y: "68%", x: "6%", side: "right" as const, rotation: 90, driftY: 25, driftX: 10 },
-    // Near bottom — flower cluster
-    { flower: <Rose3D size={28} />, y: "78%", x: "3%", side: "left" as const, rotation: 60, driftY: 15, driftX: 12 },
-    { flower: <FlowerBud3D size={18} />, y: "82%", x: "9%", side: "right" as const, rotation: 45, driftY: 10, driftX: 8 },
+    // Hero — BIG rose drifts
+    { flower: <BigRose3D size={110} />, y: "4%", x: "4%", side: "left" as const, rotation: 180, driftY: 60, driftX: 14 },
+    // Services — BIG leaf enters
+    { flower: <BigLeaf3D size={80} />, y: "16%", x: "6%", side: "right" as const, rotation: 90, driftY: 40, driftX: 20 },
+    // Occasions — BIG petals diagonal
+    { flower: <BigPetal3D size={48} />, y: "28%", x: "3%", side: "left" as const, rotation: 120, driftY: 35, driftX: 28 },
+    // Garland — BIG jasmine cluster
+    { flower: <BigJasmineCluster3D size={85} />, y: "40%", x: "5%", side: "right" as const, rotation: 60, driftY: 28, driftX: 18 },
+    // Gallery — BIG vine reveals
+    { flower: <BigVine3D size={140} />, y: "52%", x: "3%", side: "left" as const, rotation: 45, driftY: 25, driftX: 12 },
+    // Testimonials — BIG marigold settles
+    { flower: <BigMarigold3D size={80} />, y: "64%", x: "5%", side: "right" as const, rotation: 90, driftY: 30, driftX: 16 },
+    // CTA — BIG flower cluster
+    { flower: <BigFlowerCluster3D size={100} />, y: "76%", x: "2%", side: "left" as const, rotation: 60, driftY: 22, driftX: 16 },
+    // Bottom — BIG gold petal + rose
+    { flower: <BigGoldPetal3D size={44} />, y: "88%", x: "7%", side: "right" as const, rotation: 45, driftY: 15, driftX: 10 },
   ];
 
   return (
@@ -390,7 +394,7 @@ export function FloralJourney() {
           rotationDeg={p.rotation}
           driftY={p.driftY}
           driftX={p.driftX}
-          opacityRange={[0.15, 0.35]}
+          opacityRange={[0.18, 0.40]}
         />
       ))}
     </div>
