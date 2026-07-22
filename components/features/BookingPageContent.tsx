@@ -38,6 +38,8 @@ export default function BookingPageContent() {
   const [success, setSuccess] = useState(false);
   const [ticketId, setTicketId] = useState("");
   const [copied, setCopied] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailError, setEmailError] = useState("");
   const [fd, setFd] = useState<FD>({ full_name: "", phone: "", email: "", event_type: sp.get("event_type") || "", event_date: "", preferred_time: "", venue_address: "", google_maps_link: "", estimated_budget: "", guest_count: "", special_notes: "", images: [] });
   const [errors, setErrors] = useState<FE>({});
 
@@ -113,6 +115,8 @@ export default function BookingPageContent() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed");
       setTicketId(data.ticket_id || "");
+      setEmailSent(data.emailSent || false);
+      setEmailError(data.emailError || "");
       setSuccess(true);
     } catch (err) { setErrors({ submit: err instanceof Error ? err.message : "Error" }); }
     finally { setSubmitting(false); }
@@ -132,6 +136,18 @@ export default function BookingPageContent() {
           <h2 className="heading-section text-charcoal mb-4">Booking Submitted!</h2>
           <p className="text-stone font-light mb-2">Thank you, {fd.full_name}!</p>
           <p className="text-sm text-warm-gray font-body mb-6">We&apos;ll review your request and respond within 2 hours.</p>
+
+          {/* Email status */}
+          {emailSent && (
+            <div className="mb-4 p-3 rounded-xl bg-sage/10 border border-sage/20 text-sage text-xs font-body text-center">
+              ✓ Confirmation email sent to your inbox
+            </div>
+          )}
+          {!emailSent && emailError && (
+            <div className="mb-4 p-3 rounded-xl bg-gold/5 border border-gold/20 text-stone text-xs font-body text-center">
+              Your booking is confirmed, but the confirmation email could not be sent right now. Please save your ticket ID below — you can also track your booking at the Track page.
+            </div>
+          )}
 
           {/* Ticket ID Card */}
           <div className="bg-white rounded-2xl p-6 border-2 border-gold/30 mb-6 shadow-[0_8px_40px_-12px_rgba(0,0,0,0.06)]">

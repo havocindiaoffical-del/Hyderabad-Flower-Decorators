@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createBooking } from "@/lib/db-helpers";
 import { uploadBookingImage } from "@/lib/firebase-storage";
+import { sendBookingNotifications } from "@/lib/brevo-email";
 
 export async function POST(request: NextRequest) {
   try {
@@ -96,8 +97,10 @@ export async function POST(request: NextRequest) {
     }
 
     // Send email notifications via Brevo to BOTH customer and owner
+    let emailSent = false;
+    let emailError = "";
+
     try {
-      const { sendBookingNotifications } = await import("@/lib/brevo-email");
       const emailResult = await sendBookingNotifications({
         full_name,
         phone,
@@ -112,9 +115,14 @@ export async function POST(request: NextRequest) {
         special_notes: special_notes || "",
         ticket_id,
       });
-      // Email status is logged silently — booking is still created regardless
-    } catch {
-      // Email failed — booking still created
+
+      emailSent = emailResult.customerEmailSent || emailResult.ownerEmailSent;
+
+      if (emailResult.errors.length > 0) {
+        emailError = emailResult.errors.join("; ");
+      }
+    } catch (err) {
+      emailError = err instanceof Error ? err.message : "Email notification system unavailable";
     }
 
     return NextResponse.json(
@@ -122,6 +130,8 @@ export async function POST(request: NextRequest) {
         success: true,
         bookingId,
         ticket_id,
+        emailSent,
+        emailError: emailError || undefined,
       },
       { status: 201 }
     );

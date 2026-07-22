@@ -11,12 +11,27 @@ const BREVO_API_URL = "https://api.brevo.com/v3/smtp/email";
 const BUSINESS_NAME = "Hyderabad Flower Decorators";
 const OWNER_EMAIL = "nanid9404@gmail.com";
 
+// ─── Env var fallbacks (set these on Netlify if DB config is empty) ───
+const ENV_BREVO_API_KEY = process.env.BREVO_API_KEY || "";
+const ENV_BREVO_SENDER_EMAIL = process.env.BREVO_SENDER_EMAIL || "hydflowerdecorators@gmail.com";
+
 function maskApiKey(key: string): string {
   if (!key || key.length < 8) return key ? "****" : "";
   return "****" + key.slice(-4);
 }
 
-async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEmailParams): Promise<{ success: boolean; error?: string }> {
+async function getEffectiveBrevoConfig(): Promise<{ apiKey: string; senderEmail: string }> {
+  // Primary: read from DB (admin can change via settings page)
+  const dbConfig = await getBrevoConfig();
+
+  // Fallback: use env vars if DB config is empty
+  const apiKey = dbConfig.apiKey || ENV_BREVO_API_KEY;
+  const senderEmail = dbConfig.senderEmail || ENV_BREVO_SENDER_EMAIL;
+
+  return { apiKey, senderEmail };
+}
+
+async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEmailParams): Promise<{ success: boolean; error?: string; statusCode?: number }> {
   try {
     const response = await fetch(BREVO_API_URL, {
       method: "POST",
@@ -48,10 +63,11 @@ async function sendViaBrevo(apiKey: string, senderEmail: string, params: BrevoEm
         const parsed = JSON.parse(errorBody);
         if (parsed.message) errorMessage = parsed.message;
       } catch {}
-      return { success: false, error: errorMessage };
+      return { success: false, error: errorMessage, statusCode: response.status };
     }
 
-    return { success: true };
+    // Brevo returns 201 on success
+    return { success: true, statusCode: response.status };
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "Network error contacting Brevo";
     return { success: false, error: message };
@@ -71,22 +87,29 @@ export async function sendBookingNotifications(bookingData: {
   guest_count?: string;
   special_notes?: string;
   ticket_id: string;
-}): Promise<{ customerEmailSent: boolean; ownerEmailSent: boolean; errors: string[] }> {
-  const config = await getBrevoConfig();
+}): Promise<{ customerEmailSent: boolean; ownerEmailSent: boolean; errors: string[]; configSource: string }> {
+  const config = await getEffectiveBrevoConfig();
 
+  let configSource = "db";
   if (!config.apiKey) {
     return {
       customerEmailSent: false,
       ownerEmailSent: false,
-      errors: ["Brevo API key not configured. Set it in Admin Settings."],
+      errors: ["No Brevo API key found. Configure it in Admin Settings or set BREVO_API_KEY env var on Netlify."],
+      configSource: "none",
     };
+  }
+
+  if (config.apiKey === ENV_BREVO_API_KEY && ENV_BREVO_API_KEY) {
+    configSource = "env";
   }
 
   if (!config.senderEmail) {
     return {
       customerEmailSent: false,
       ownerEmailSent: false,
-      errors: ["Brevo sender email not configured. Set it in Admin Settings."],
+      errors: ["No Brevo sender email found. Set it in Admin Settings or set BREVO_SENDER_EMAIL env var. The sender email must be verified in Brevo dashboard → Settings → Senders."],
+      configSource,
     };
   }
 
@@ -143,7 +166,7 @@ export async function sendBookingNotifications(bookingData: {
   if (customerResult.success) {
     customerEmailSent = true;
   } else {
-    errors.push(`Customer email failed: ${customerResult.error}`);
+    errors.push(`Customer email failed: ${customerResult.error} (status: ${customerResult.statusCode || "N/A"})`);
   }
 
   // ─── Email 2: Owner notification ────────────────────────────────
@@ -191,10 +214,10 @@ export async function sendBookingNotifications(bookingData: {
   if (ownerResult.success) {
     ownerEmailSent = true;
   } else {
-    errors.push(`Owner email failed: ${ownerResult.error}`);
+    errors.push(`Owner email failed: ${ownerResult.error} (status: ${ownerResult.statusCode || "N/A"})`);
   }
 
-  return { customerEmailSent, ownerEmailSent, errors };
+  return { customerEmailSent, ownerEmailSent, errors, configSource };
 }
 
 export async function testBrevoConnection(apiKey: string, senderEmail: string, testRecipientEmail: string): Promise<{ success: boolean; message: string }> {
@@ -219,4 +242,4 @@ export async function testBrevoConnection(apiKey: string, senderEmail: string, t
   return { success: false, message: result.error || "Unknown error" };
 }
 
-export { maskApiKey };
+export { maskApiKey, getEffectiveBrevoConfig };
