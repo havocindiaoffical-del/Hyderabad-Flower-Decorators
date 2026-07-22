@@ -23,7 +23,7 @@ async function getEffectiveBrevoConfig(): Promise<{ apiKey: string; senderEmail:
   // Fallback: read env vars at RUNTIME (not module-import time)
   // This is critical — Netlify env vars are only available at runtime, not during build
   const envApiKey = process.env.BREVO_API_KEY || "";
-  const envSenderEmail = process.env.BREVO_SENDER_EMAIL || "hydflowerdecorators@gmail.com";
+  const envSenderEmail = process.env.BREVO_SENDER_EMAIL || "hyderabadflowerdecorators@outlook.com";
 
   const apiKey = dbConfig.apiKey || envApiKey;
   const senderEmail = dbConfig.senderEmail || envSenderEmail;
