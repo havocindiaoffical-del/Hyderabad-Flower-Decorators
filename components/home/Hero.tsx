@@ -4,6 +4,7 @@ import React, { useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { ArrowRight, ChevronDown } from "lucide-react";
+import { HeroFloralAnimation } from "@/components/floral/FloralAnimations";
 
 export default function Hero() {
   const imageRef = useRef<HTMLDivElement>(null);
@@ -29,7 +30,7 @@ export default function Hero() {
         }}
       />
 
-      {/* Warm gradient wash — very subtle */}
+      {/* Warm gradient wash */}
       <div className="absolute inset-0 pointer-events-none">
         <div
           className="absolute top-0 right-0 w-[70vw] h-[80vh] opacity-[0.08]"
@@ -46,6 +47,9 @@ export default function Hero() {
           }}
         />
       </div>
+
+      {/* 3D Floral Animation Layer */}
+      <HeroFloralAnimation />
 
       {/* Botanical line-art decoration — top left */}
       <svg
@@ -173,7 +177,7 @@ export default function Hero() {
             {/* RIGHT — Floral image composition */}
             <div className="lg:col-span-6 xl:col-span-6 relative opacity-0 animate-[fadeUp_1.2s_0.5s_forwards]">
               <div ref={imageRef} className="relative will-change-transform">
-                {/* Main floral image — organic rounded shape */}
+                {/* Main floral image */}
                 <div
                   className="relative overflow-hidden mx-auto lg:mx-0"
                   style={{
@@ -190,7 +194,6 @@ export default function Hero() {
                     priority
                     sizes="(max-width: 768px) 90vw, 45vw"
                   />
-                  {/* Subtle inner shadow for depth */}
                   <div
                     className="absolute inset-0 pointer-events-none"
                     style={{
@@ -214,13 +217,9 @@ export default function Hero() {
                   />
                 </div>
 
-                {/* Decorative ring behind image */}
-                <div
-                  className="absolute -top-8 -right-8 w-48 h-48 rounded-full border border-gold/15 pointer-events-none hidden lg:block"
-                />
-                <div
-                  className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full border border-sage/10 pointer-events-none hidden lg:block"
-                />
+                {/* Decorative rings */}
+                <div className="absolute -top-8 -right-8 w-48 h-48 rounded-full border border-gold/15 pointer-events-none hidden lg:block" />
+                <div className="absolute -bottom-4 -right-4 w-24 h-24 rounded-full border border-sage/10 pointer-events-none hidden lg:block" />
               </div>
             </div>
           </div>
@@ -244,7 +243,7 @@ export default function Hero() {
         <ChevronDown className="w-3.5 h-3.5 text-gold/50 animate-bounce" style={{ animationDuration: '2s' }} />
       </div>
 
-      {/* Subtle vertical gold line — desktop only */}
+      {/* Subtle vertical gold line */}
       <div className="absolute right-24 top-1/4 bottom-1/4 w-px bg-gradient-to-b from-transparent via-gold/10 to-transparent hidden xl:block" />
     </section>
   );

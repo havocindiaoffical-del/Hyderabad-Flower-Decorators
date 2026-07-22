@@ -3,6 +3,9 @@ import Hero from "@/components/home/Hero";
 import Statistics from "@/components/home/Statistics";
 
 // Lazy load below-fold sections for faster initial load
+const FloralJourney = dynamic(() => import("@/components/floral/FloralJourneyWrapper"));
+const SectionFloralTransition = dynamic(() => import("@/components/floral/FloralAnimations").then(m => ({ default: m.SectionFloralTransition })));
+const FloatingPetals = dynamic(() => import("@/components/floral/FloralAnimations").then(m => ({ default: m.FloatingPetals })));
 const Services = dynamic(() => import("@/components/home/Services"));
 const GalleryPreview = dynamic(() => import("@/components/home/GalleryPreview"));
 const WhyChooseUs = dynamic(() => import("@/components/home/WhyChooseUs"));
@@ -15,12 +18,21 @@ export default function HomePage() {
     <>
       <Hero />
       <Statistics />
+      <SectionFloralTransition variant="hero-services" />
       <Services />
-      <GalleryPreview />
+      <FloatingPetals count={4} />
+      <SectionFloralTransition variant="services-occasions" />
       <WhyChooseUs />
+      <SectionFloralTransition variant="occasions-garlands" />
+      <GalleryPreview />
+      <FloatingPetals count={3} />
+      <SectionFloralTransition variant="garlands-gallery" />
       <Testimonials />
+      <SectionFloralTransition variant="gallery-booking" />
       <BookingCTA />
+      <FloatingPetals count={5} />
       <FAQ />
+      <FloralJourney />
     </>
   );
 }
