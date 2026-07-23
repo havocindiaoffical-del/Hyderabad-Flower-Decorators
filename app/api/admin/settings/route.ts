@@ -9,6 +9,7 @@ const ADMIN_EMAILS = [
   "hydflowerdecorators@gmail.com",
   "nanid9404@gmail.com",
   "Jaswanthkaioken@gmail.com",
+  "hyderabadflowerdecorators@outlook.com",
 ];
 
 async function verifyAdminToken(authHeader: string): Promise<{ email: string } | null> {

@@ -11,7 +11,7 @@ export default function ContactPageContent() {
   const contacts = [
     { icon: Phone, title: "Phone", value: "+91 98765 43210", href: "tel:+919876543210", desc: "Available 24/7" },
     { icon: MessageCircle, title: "WhatsApp", value: "+91 98765 43210", href: "https://wa.me/919876543210", desc: "Quick responses" },
-    { icon: Mail, title: "Email", value: "info@hydflowerdecorators.com", href: "mailto:info@hydflowerdecorators.com", desc: "Detailed inquiries" },
+    { icon: Mail, title: "Email", value: "hyderabadflowerdecorators@outlook.com", href: "mailto:hyderabadflowerdecorators@outlook.com", desc: "Detailed inquiries" },
     { icon: MapPin, title: "Location", value: "Hyderabad, Telangana", href: "https://maps.google.com/?q=Hyderabad,Telangana", desc: "All areas served" },
     { icon: Clock, title: "Hours", value: "24/7 Service", href: null, desc: "Always available" },
     { icon: Globe, title: "Social", value: "@hydflowerdecorators", href: "https://instagram.com/hydflowerdecorators", desc: "Daily inspiration" },

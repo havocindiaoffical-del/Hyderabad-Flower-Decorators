@@ -12,6 +12,7 @@ const ADMIN_EMAILS = [
   "hydflowerdecorators@gmail.com",
   "nanid9404@gmail.com",
   "Jaswanthkaioken@gmail.com",
+  "hyderabadflowerdecorators@outlook.com",
 ];
 
 export default function AdminLoginPage() {

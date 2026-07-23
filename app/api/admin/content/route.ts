@@ -4,7 +4,7 @@ import { businessSettings } from "@/lib/schema";
 import { eq } from "drizzle-orm";
 
 const FIREBASE_API_KEY = "AIzaSyCoGmQHQWxqWfA5ceKHYF6BZ5yy_8a1G60";
-const ADMIN_EMAILS = ["info@hydflowerdecorators.com", "hydflowerdecorators@gmail.com", "nanid9404@gmail.com", "Jaswanthkaioken@gmail.com"];
+const ADMIN_EMAILS = ["info@hydflowerdecorators.com", "hydflowerdecorators@gmail.com", "nanid9404@gmail.com", "Jaswanthkaioken@gmail.com", "hyderabadflowerdecorators@outlook.com"];
 
 async function verifyAdminToken(authHeader: string): Promise<{ email: string } | null> {
   const token = authHeader.replace("Bearer ", "").trim();

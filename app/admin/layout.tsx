@@ -14,6 +14,7 @@ const ADMIN_EMAILS = [
   "hydflowerdecorators@gmail.com",
   "nanid9404@gmail.com",
   "Jaswanthkaioken@gmail.com",
+  "hyderabadflowerdecorators@outlook.com",
 ];
 
 const SESSION_KEY = "hfd_admin_email";

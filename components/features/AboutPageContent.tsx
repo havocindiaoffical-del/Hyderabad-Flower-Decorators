@@ -4,7 +4,7 @@ import React from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, Mail } from "lucide-react";
 import { useSiteContent } from "@/components/providers/SiteContent";
 
 const milestones = [
@@ -53,6 +53,10 @@ export default function AboutPageContent() {
                 <p>{content.about_description}</p>
                 <p>By sourcing directly from flower farms, investing in skilled artisans, and streamlining our processes, we created a service that delivers premium quality at honest prices.</p>
                 <p>Today, with over 500 successful events and a 4.9-star rating, we continue to push creative boundaries while staying true to our roots — fresh flowers, fair prices, and heartfelt service.</p>
+                <a href="mailto:hyderabadflowerdecorators@outlook.com" className="inline-flex items-center gap-2 text-gold hover:text-gold-light transition-colors mt-2">
+                  <Mail className="w-4 h-4" />
+                  <span className="font-body">hyderabadflowerdecorators@outlook.com</span>
+                </a>
               </div>
             </motion.div>
             <motion.div initial={{ opacity: 0, x: 30 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }}>
