@@ -39,6 +39,18 @@ export function generateSlug(text: string): string {
     .trim();
 }
 
+export function formatBudget(value: string): string {
+  const budgetMap: Record<string, string> = {
+    "under-5000": "Under ₹5,000",
+    "5000-10000": "₹5,000 — ₹10,000",
+    "10000-25000": "₹10,000 — ₹25,000",
+    "25000-50000": "₹25,000 — ₹50,000",
+    "50000-100000": "₹50,000 — ₹1,00,000",
+    "above-100000": "Above ₹1,00,000",
+  };
+  return budgetMap[value] || value;
+}
+
 export function truncate(text: string, length: number): string {
   if (text.length <= length) return text;
   return text.slice(0, length) + "...";

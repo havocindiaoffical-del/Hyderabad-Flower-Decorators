@@ -6,7 +6,7 @@ import {
   Search, CheckCircle2, XCircle, Clock, Loader2,
   ChevronLeft, ChevronRight, Phone, Mail, MapPin, Ticket, Undo2, Download, Image as ImageIcon
 } from "lucide-react";
-import { formatDate, formatTime, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
+import { formatDate, formatTime, formatBudget, getBookingStatusColor, getBookingStatusLabel } from "@/lib/utils";
 
 interface BookingData {
   id?: string;
@@ -148,7 +148,7 @@ export default function AdminBookings() {
         `Event Date   : ${formatDate(selectedBooking.event_date)}`,
         `Preferred Time: ${formatTime(selectedBooking.preferred_time)}`,
         `Venue Address: ${selectedBooking.venue_address}`,
-        selectedBooking.estimated_budget ? `Budget       : ${selectedBooking.estimated_budget}` : "",
+        selectedBooking.estimated_budget ? `Budget       : ${formatBudget(selectedBooking.estimated_budget)}` : "",
         selectedBooking.guest_count ? `Guest Count  : ${selectedBooking.guest_count}` : "",
         "", `Status       : ${getBookingStatusLabel(selectedBooking.status)}`,
         selectedBooking.special_notes ? `Notes        : ${selectedBooking.special_notes}` : "",
@@ -263,10 +263,12 @@ export default function AdminBookings() {
                         <span className="text-xs font-body text-sage font-medium">✓ Ready</span>
                       ) : b.upload_status === "uploading" ? (
                         <span className="text-xs font-body text-gold">⏳ Uploading</span>
-                      ) : (b.image_share_urls?.length > 0 || b.images?.length > 0) ? (
-                        <span className="text-xs font-body" style={{ color: textMuted }}>Pending</span>
+                      ) : b.upload_status === "pending" ? (
+                        <span className="text-xs font-body" style={{ color: "#B8935F" }}>⏳ Pending</span>
+                      ) : b.image_share_urls?.length > 0 ? (
+                        <span className="text-xs font-body" style={{ color: textMuted }}>Links</span>
                       ) : (
-                        <span className="text-xs font-body" style={{ color: textMuted }}>None</span>
+                        <span className="text-xs font-body" style={{ color: textMuted }}>—</span>
                       )}
                     </td>
                     <td className="py-3 px-4"><span className={`px-2.5 py-1 rounded-full text-xs font-body font-medium ${getBookingStatusColor(b.status)}`}>{getBookingStatusLabel(b.status)}</span></td>
@@ -347,7 +349,7 @@ export default function AdminBookings() {
               <div><label className="text-xs font-body" style={{ color: textSecondary }}>Time</label><p className="font-medium font-body" style={{ color: textPrimary }}>{formatTime(selectedBooking.preferred_time)}</p></div>
               <div className="sm:col-span-2"><label className="text-xs font-body" style={{ color: textSecondary }}>Venue</label><p className="font-medium font-body flex items-start gap-1" style={{ color: textPrimary }}><MapPin className="w-3 h-3 mt-1 shrink-0 text-gold" />{selectedBooking.venue_address}</p></div>
               {selectedBooking.google_maps_link && <div className="sm:col-span-2"><a href={selectedBooking.google_maps_link} target="_blank" rel="noopener noreferrer" className="text-sm text-gold hover:underline font-body">Open in Maps →</a></div>}
-              {selectedBooking.estimated_budget && <div><label className="text-xs font-body" style={{ color: textSecondary }}>Budget</label><p className="font-medium font-body" style={{ color: textPrimary }}>{selectedBooking.estimated_budget}</p></div>}
+              {selectedBooking.estimated_budget && <div><label className="text-xs font-body" style={{ color: textSecondary }}>Budget</label><p className="font-medium font-body" style={{ color: textPrimary }}>{formatBudget(selectedBooking.estimated_budget)}</p></div>}
               {selectedBooking.guest_count && <div><label className="text-xs font-body" style={{ color: textSecondary }}>Guests</label><p className="font-medium font-body" style={{ color: textPrimary }}>{selectedBooking.guest_count}</p></div>}
               {selectedBooking.special_notes && <div className="sm:col-span-2"><label className="text-xs font-body" style={{ color: textSecondary }}>Notes</label><p className="font-medium font-body" style={{ color: textPrimary }}>{selectedBooking.special_notes}</p></div>}
 
@@ -355,6 +357,15 @@ export default function AdminBookings() {
               <div className="sm:col-span-2">
                 <label className="text-xs font-body mb-2 block" style={{ color: textSecondary }}>
                   📎 Reference Photos
+                  {selectedBooking.image_share_urls?.length > 0 && (
+                    <span className="ml-1" style={{ color: "#5B7553" }}> — {selectedBooking.image_share_urls.length} image(s) uploaded ✓</span>
+                  )}
+                  {selectedBooking.upload_status === "pending" && selectedBooking.image_share_urls?.length === 0 && (
+                    <span className="ml-1 text-gold"> — awaiting upload</span>
+                  )}
+                  {selectedBooking.upload_status !== "pending" && selectedBooking.upload_status !== "uploading" && selectedBooking.upload_status !== "complete" && selectedBooking.image_share_urls?.length === 0 && (
+                    <span className="ml-1" style={{ color: textMuted }}> — none</span>
+                  )}
                 </label>
 
                 {/* Uploading status */}
@@ -371,47 +382,44 @@ export default function AdminBookings() {
                     <div className="flex items-center justify-between flex-wrap gap-2">
                       <div className="flex items-center gap-2">
                         <CheckCircle2 className="w-4 h-4 text-sage" />
-                        <p className="text-xs font-body font-semibold" style={{ color: "#5B7553" }}>✓ Photos ready — permanent link</p>
+                        <p className="text-xs font-body font-semibold" style={{ color: "#5B7553" }}>✓ Photos ready</p>
                       </div>
                       <a href={selectedBooking.zip_url} target="_blank" rel="noopener noreferrer"
                         className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-body font-semibold" style={{ background: "#B8935F", color: "#1A1A1A" }}>
                         <Download className="w-4 h-4" />Access Photos
                       </a>
                     </div>
-                    <p className="text-[10px] font-body mt-2" style={{ color: textMuted }}>Share via WhatsApp, email, or any channel</p>
                   </div>
                 )}
 
-                {/* Individual image URLs */}
+                {/* Individual image URLs + thumbnails */}
                 {selectedBooking.image_share_urls?.length > 0 && (
                   <div className="rounded-xl p-3 mb-3" style={{ background: "rgba(184,147,95,0.05)", border: "1px solid rgba(184,147,95,0.15)" }}>
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-xs font-body font-semibold" style={{ color: "#B8935F" }}>🔗 Individual Image Links ({selectedBooking.image_share_urls.length})</p>
+                      <p className="text-xs font-body font-semibold" style={{ color: "#B8935F" }}>🔗 Image Links ({selectedBooking.image_share_urls.length})</p>
                       <button onClick={() => { navigator.clipboard.writeText(selectedBooking.image_share_urls!.join("\n")); setShareLinkCopied(true); setTimeout(() => setShareLinkCopied(false), 2000); }}
                         className="text-xs px-3 py-1.5 rounded-lg font-body" style={{ background: "#B8935F", color: "#1A1A1A" }}>
                         {shareLinkCopied ? "✓ Copied!" : "Copy All URLs"}
                       </button>
                     </div>
-                    <div className="space-y-1.5">
+                    {/* Thumbnails */}
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {selectedBooking.image_share_urls.map((url, i) => (
+                        <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                          <div className="w-20 h-20 rounded-lg overflow-hidden" style={{ background: hoverBg }}>
+                            <img src={url} alt={`Reference ${i + 1}`} className="w-full h-full object-cover" />
+                          </div>
+                        </a>
+                      ))}
+                    </div>
+                    {/* URL list */}
+                    <div className="space-y-1">
                       {selectedBooking.image_share_urls.map((url, i) => (
                         <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-xs font-mono text-gold hover:underline truncate">
                           <ImageIcon className="w-3 h-3 shrink-0" />Image {i + 1}: {url}
                         </a>
                       ))}
                     </div>
-                  </div>
-                )}
-
-                {/* Image thumbnails from image_share_urls */}
-                {selectedBooking.image_share_urls?.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    {selectedBooking.image_share_urls.map((url, i) => (
-                      <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                        <div className="w-20 h-20 rounded-lg overflow-hidden" style={{ background: hoverBg }}>
-                          <img src={url} alt={`Reference ${i + 1}`} className="w-full h-full object-cover" />
-                        </div>
-                      </a>
-                    ))}
                   </div>
                 )}
 
@@ -431,17 +439,25 @@ export default function AdminBookings() {
                   </button>
                 )}
 
-                {/* No images at all */}
-                {selectedBooking.image_share_urls?.length === 0 && selectedBooking.images?.length === 0 && selectedBooking.upload_status !== "uploading" && (
+                {/* ─── Mutually exclusive status messages ──── */}
+                {/* CASE 1: Upload pending — customer sent images, awaiting cloud upload */}
+                {selectedBooking.upload_status === "pending" && selectedBooking.image_share_urls?.length === 0 && (
+                  <div className="rounded-xl p-3" style={{ background: "rgba(184,147,95,0.05)", border: "1px solid rgba(184,147,95,0.15)" }}>
+                    <p className="text-xs font-body text-gold">⏳ Customer submitted reference images — they are pending cloud upload. The auto-upload should process them shortly, or click "Upload to Cloud" above to trigger manually.</p>
+                  </div>
+                )}
+
+                {/* CASE 2: No images at all — customer didn't upload any */}
+                {selectedBooking.upload_status !== "pending" && selectedBooking.upload_status !== "uploading" && selectedBooking.upload_status !== "complete" && selectedBooking.image_share_urls?.length === 0 && selectedBooking.images?.length === 0 && (
                   <div className="rounded-xl p-4" style={{ background: hoverBg, border: `1px solid ${borderColor}` }}>
                     <p className="text-xs font-body" style={{ color: textSecondary }}>No reference images uploaded for this booking</p>
                   </div>
                 )}
 
-                {/* Upload pending — images sent by customer but not yet uploaded to cloud */}
-                {selectedBooking.upload_status === "pending" && selectedBooking.image_share_urls?.length === 0 && (
-                  <div className="rounded-xl p-3" style={{ background: "rgba(184,147,95,0.05)", border: "1px solid rgba(184,147,95,0.15)" }}>
-                    <p className="text-xs font-body text-gold">⏳ Customer images are pending cloud upload. Click "Upload to Cloud" to process them, or refresh if auto-upload is in progress.</p>
+                {/* CASE 3: Upload complete but no cloud links (edge case — upload failed silently) */}
+                {selectedBooking.upload_status === "complete" && selectedBooking.image_share_urls?.length === 0 && !selectedBooking.zip_url && (
+                  <div className="rounded-xl p-3" style={{ background: "rgba(220,38,38,0.05)", border: "1px solid rgba(220,38,38,0.15)" }}>
+                    <p className="text-xs font-body text-red-600">⚠️ Upload completed but no image links were saved. The image upload to cloud may have failed. Try "Upload to Cloud" again or check the booking images manually.</p>
                   </div>
                 )}
               </div>
