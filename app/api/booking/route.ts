@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createBooking } from "@/lib/db-helpers";
-import { sendCustomerConfirmation } from "@/lib/brevo-email";
+import { createBooking, getBookingByTicketId } from "@/lib/db-helpers";
+import { sendCustomerConfirmation, sendOwnerNotification } from "@/lib/brevo-email";
+import { getDb } from "@/lib/db";
+import { bookings } from "@/lib/schema";
+import { eq } from "drizzle-orm";
 
-// FAST booking creation — saves to DB + sends customer email only
-// Owner email + image uploads happen in separate /api/booking/upload-images call
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://hyderabadflowerdecorators.netlify.app";
+
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
@@ -21,7 +24,6 @@ export async function POST(request: NextRequest) {
     const special_notes = (formData.get("special_notes") as string)?.trim() || "";
     const user_uid = (formData.get("user_uid") as string)?.trim() || "";
 
-    // Validate required fields
     if (!full_name || !phone || !email || !event_type || !event_date || !preferred_time || !venue_address) {
       return NextResponse.json({ error: "Please fill in all required fields" }, { status: 400 });
     }
@@ -35,54 +37,73 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
 
-    // Create booking in database FAST
+    // Collect image files and convert to base64 data URLs for DB storage
+    const imageDataUrls: string[] = [];
+    const entries = Array.from(formData.entries());
+    for (const [key, value] of entries) {
+      if (key.startsWith("image_") && value instanceof File) {
+        if (value.size <= 5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(value.type)) {
+          try {
+            const arrayBuffer = await value.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const dataUrl = `data:${value.type};base64,${base64}`;
+            imageDataUrls.push(dataUrl);
+          } catch {
+            // Skip this image if conversion fails
+          }
+        }
+      }
+    }
+
+    // Create booking WITH images stored in Neon DB
     let bookingId = "";
     let ticket_id = "";
 
     try {
       const result = await createBooking({
-        full_name,
-        phone,
-        email,
-        event_type,
-        event_date,
-        preferred_time,
-        venue_address,
-        google_maps_link,
-        estimated_budget,
-        guest_count,
-        special_notes,
-        images: [],
-        user_uid: user_uid || "",
+        full_name, phone, email, event_type, event_date, preferred_time,
+        venue_address, google_maps_link, estimated_budget, guest_count,
+        special_notes, images: imageDataUrls, user_uid: user_uid || "",
       });
       bookingId = result.id;
       ticket_id = result.ticket_id;
-    } catch {
-      const prefix = "HFD";
-      const timestamp = Date.now().toString(36).toUpperCase();
-      const random = Math.random().toString(36).substring(2, 5).toUpperCase();
-      ticket_id = `${prefix}-${timestamp}-${random}`;
-      bookingId = `local-${Date.now()}`;
+    } catch (dbErr) {
+      return NextResponse.json(
+        { error: `Failed to create booking: ${dbErr instanceof Error ? dbErr.message : "DB error"}` },
+        { status: 500 }
+      );
     }
 
-    // Send customer email immediately (don't wait for owner email)
+    // Build image serving URLs (serve from Neon via API)
+    const imageServeUrls = imageDataUrls.map((_, i) =>
+      `${SITE_URL}/api/booking/image/${ticket_id}/${i}`
+    );
+
+    // Photo page URL for owner email "Access Photos" button
+    const photosUrl = imageDataUrls.length > 0
+      ? `${SITE_URL}/api/booking/photos/${ticket_id}`
+      : "";
+
+    // Mark upload complete and save serving URLs IMMEDIATELY
+    try {
+      await getDb().update(bookings).set({
+        imageShareUrls: imageServeUrls,
+        zipUrl: photosUrl,
+        uploadStatus: "complete",
+      }).where(eq(bookings.ticketId, ticket_id));
+    } catch {
+      // Non-critical — images are still in DB, just URLs not saved
+    }
+
+    // Send customer email
     let emailSent = false;
     let emailError = "";
-
     try {
       const emailResult = await sendCustomerConfirmation({
-        full_name,
-        phone,
-        email,
-        event_type,
-        event_date,
-        preferred_time,
-        venue_address,
-        google_maps_link: google_maps_link || "",
-        estimated_budget: estimated_budget || "",
-        guest_count: guest_count || "",
-        special_notes: special_notes || "",
-        ticket_id,
+        full_name, phone, email, event_type, event_date, preferred_time,
+        venue_address, google_maps_link: google_maps_link || "",
+        estimated_budget: estimated_budget || "", guest_count: guest_count || "",
+        special_notes: special_notes || "", ticket_id,
       });
       emailSent = emailResult.sent;
       if (emailResult.error) emailError = emailResult.error;
@@ -90,13 +111,27 @@ export async function POST(request: NextRequest) {
       emailError = err instanceof Error ? err.message : "Email unavailable";
     }
 
-    // Return to customer IMMEDIATELY — they don't need to wait for image uploads or owner email
+    // Send owner email with "Access Photos" button
+    try {
+      await sendOwnerNotification({
+        full_name, phone, email, event_type, event_date, preferred_time,
+        venue_address, google_maps_link: google_maps_link || "",
+        estimated_budget: estimated_budget || "", guest_count: guest_count || "",
+        special_notes: special_notes || "", ticket_id,
+        image_count: imageDataUrls.length,
+        zip_url: photosUrl,
+      });
+    } catch {
+      // Owner email failure is non-critical
+    }
+
     return NextResponse.json({
       success: true,
       bookingId,
       ticket_id,
       emailSent,
       emailError: emailError || undefined,
+      image_count: imageDataUrls.length,
     }, { status: 201 });
   } catch {
     return NextResponse.json(

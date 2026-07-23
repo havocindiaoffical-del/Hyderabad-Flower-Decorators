@@ -41,7 +41,6 @@ export default function BookingPageContent() {
   const [copied, setCopied] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
   const [emailError, setEmailError] = useState("");
-  const [imageUploading, setImageUploading] = useState(false);
   const [fd, setFd] = useState<FD>({ full_name: "", phone: "", email: "", event_type: sp.get("event_type") || "", event_date: "", preferred_time: "", venue_address: "", google_maps_link: "", estimated_budget: "", guest_count: "", special_notes: "", images: [] });
   const [errors, setErrors] = useState<FE>({});
 
@@ -89,8 +88,46 @@ export default function BookingPageContent() {
     if (fileRef.current) fileRef.current.value = "";
   };
 
-  // ─── PHASE 1: Create booking + send customer email (FAST) ────
-  // ─── PHASE 2: Upload images to catbox.moe + send owner email (BACKGROUND) ──
+  // Compress image file to max ~400KB using canvas resizing + quality reduction
+  const compressImage = async (file: File, maxBytes: number = 400000): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Calculate target dimensions — scale down if large
+          let w = img.width;
+          let h = img.height;
+          const MAX_DIM = 1200;
+          if (w > MAX_DIM || h > MAX_DIM) {
+            const scale = MAX_DIM / Math.max(w, h);
+            w = Math.round(w * scale);
+            h = Math.round(h * scale);
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = w;
+          canvas.height = h;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { resolve(reader.result as string); return; }
+          ctx.drawImage(img, 0, 0, w, h);
+          // Try different JPEG qualities until under maxBytes
+          let quality = 0.8;
+          let dataUrl = canvas.toDataURL("image/jpeg", quality);
+          while (dataUrl.length > maxBytes && quality > 0.3) {
+            quality -= 0.1;
+            dataUrl = canvas.toDataURL("image/jpeg", quality);
+          }
+          resolve(dataUrl);
+        };
+        img.src = reader.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // ─── SINGLE REQUEST: booking data + compressed images ────────────
+  // Images are compressed client-side to ~400KB each, sent as base64 strings
+  // Server stores them in Neon DB, serves via API endpoints. No Firebase needed.
   const onSubmit = async (ev: React.FormEvent) => {
     ev.preventDefault();
     if (!validate()) return;
@@ -98,10 +135,23 @@ export default function BookingPageContent() {
     setSubmitProgress("Submitting...");
 
     try {
-      // Phase 1: FAST — create booking + customer email (NO images here)
+      // Compress images first
+      const compressedImages: string[] = [];
+      if (fd.images.length > 0) {
+        setSubmitProgress("Compressing images...");
+        for (const img of fd.images) {
+          const dataUrl = await compressImage(img);
+          compressedImages.push(dataUrl);
+        }
+        setSubmitProgress("Submitting booking...");
+      }
+
+      // ONE single request — includes everything
       const sd = new FormData();
       Object.entries(fd).forEach(([k, v]) => { if (k !== "images" && v) sd.append(k, v); });
       if (user?.uid) sd.append("user_uid", user.uid);
+      // Append compressed base64 images as strings
+      compressedImages.forEach((dataUrl, i) => sd.append(`image_${i}`, dataUrl));
 
       const res = await fetch("/api/booking", { method: "POST", body: sd });
       const data = await res.json();
@@ -113,21 +163,6 @@ export default function BookingPageContent() {
       setSubmitProgress("");
       setSubmitting(false);
       setSuccess(true);
-
-      // Phase 2: BACKGROUND — upload images + send owner email (customer already sees success)
-      if (fd.images.length > 0) {
-        setImageUploading(true);
-        try {
-          const imageSd = new FormData();
-          imageSd.append("ticket_id", data.ticket_id);
-          fd.images.forEach((img, i) => imageSd.append(`image_${i}`, img));
-
-          await fetch("/api/booking/upload-images", { method: "POST", body: imageSd });
-        } catch {
-          // If background upload fails, admin can retry from dashboard
-        }
-        setImageUploading(false);
-      }
     } catch (err) {
       setErrors({ submit: err instanceof Error ? err.message : "Error" });
       setSubmitProgress("");
@@ -149,14 +184,6 @@ export default function BookingPageContent() {
           <h2 className="heading-section text-charcoal mb-4">Booking Submitted!</h2>
           <p className="text-stone font-light mb-2">Thank you, {fd.full_name}!</p>
           <p className="text-sm text-warm-gray font-body mb-6">We&apos;ll review your request and respond within 2 hours.</p>
-
-          {/* Image upload indicator */}
-          {imageUploading && (
-            <div className="mb-4 p-3 rounded-xl bg-cream border border-border-light flex items-center gap-2 justify-center">
-              <Loader2 className="w-4 h-4 text-gold animate-spin" />
-              <span className="text-xs font-body text-stone">Uploading reference images...</span>
-            </div>
-          )}
 
           {emailSent && (
             <div className="mb-4 p-3 rounded-xl bg-sage/10 border border-sage/20 text-sage text-xs font-body text-center">
