@@ -22,13 +22,19 @@ export default function Navbar() {
   const pathname = usePathname();
   const isAdmin = pathname.startsWith("/admin");
 
+  // Notify FloatingActions when menu state changes
+  const toggleMenu = (open: boolean) => {
+    setMenuOpen(open);
+    window.dispatchEvent(new CustomEvent(open ? "hfd-menu-open" : "hfd-menu-close"));
+  };
+
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 60);
     window.addEventListener("scroll", h, { passive: true });
     return () => window.removeEventListener("scroll", h);
   }, []);
 
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
+  useEffect(() => { toggleMenu(false); }, [pathname]);
   useEffect(() => { document.body.style.overflow = menuOpen ? "hidden" : ""; return () => { document.body.style.overflow = ""; }; }, [menuOpen]);
 
   if (isAdmin) return null;
@@ -82,7 +88,7 @@ export default function Navbar() {
           </div>
 
           {/* Mobile toggle */}
-          <button onClick={() => setMenuOpen(!menuOpen)} className="md:hidden text-charcoal" aria-label="Menu">
+          <button onClick={() => toggleMenu(!menuOpen)} className="md:hidden text-charcoal" aria-label="Menu">
             {menuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>
         </div>
