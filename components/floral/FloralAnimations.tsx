@@ -10,18 +10,17 @@ import {
   Rose3D, RosePetal, Jasmine3D, Marigold3D, Leaf3D,
   BotanicalStem3D, Vine3D, FlowerBud3D, GoldPetal,
 } from "./FloralElements";
-import { useReducedMotion, useIsMobile, useIsMobileSafe, useIsDesktopReady } from "./hooks";
+import { useReducedMotion, useIsMobile } from "./hooks";
 
-// ─── Floating Petals — continuous gentle drift ────────────────────
-// These animate endlessly with Infinity repeat, so they NEVER stick.
+// ─── Floating Petals — desktop only, continuous gentle drift ────────
 
 export function FloatingPetals({ count = 5 }: { count?: number }) {
   const reduced = useReducedMotion();
   const isMobile = useIsMobile();
-  // Don't render ANY petals until client detection resolves — prevents mobile crash
-  if (reduced || isMobile === null) return null;
-  // Skip floating petals entirely on mobile for performance
-  if (isMobile) return null;
+
+  if (reduced || isMobile === true) return null;
+  // Placeholder on first render (before detection) — no heavy hooks
+  if (isMobile === null) return <div className="fixed inset-0 pointer-events-none z-[1]" />;
 
   const petalTypes = [BigPetal3D, BigGoldPetal3D, RosePetal, GoldPetal, BigPetal3D, BigGoldPetal3D, RosePetal];
   const petalSizes = [38, 34, 18, 16, 42, 30, 20];
@@ -35,7 +34,7 @@ export function FloatingPetals({ count = 5 }: { count?: number }) {
         const topStart = `${-10 - i * 5}%`;
         const totalDuration = 25 + i * 6;
         const driftX = (i % 2 === 0 ? 1 : -1) * (15 + i * 5);
-        const driftY = 1200; // large enough value for vertical travel (works on all screen sizes)
+        const driftY = 1200;
 
         return (
           <motion.div
@@ -48,15 +47,9 @@ export function FloatingPetals({ count = 5 }: { count?: number }) {
               y: [0, driftY * 0.2, driftY * 0.4, driftY * 0.6, driftY * 0.8, driftY],
               x: [0, driftX * 0.3, driftX * 0.5, driftX * 0.4, driftX * 0.6, driftX * 0.7],
               rotateZ: [0, 50 + i * 15, 120 + i * 20, 200 + i * 10, 280 + i * 15, 360],
-              rotateY: [0, 10, -10, 8, -8, 0],
               scale: [0.4, 0.65, 0.9, 0.85, 0.6, 0.3],
             }}
-            transition={{
-              duration: totalDuration,
-              delay: i * 3,
-              repeat: Infinity,
-              ease: "linear",
-            }}
+            transition={{ duration: totalDuration, delay: i * 3, repeat: Infinity, ease: "linear" }}
           >
             <Petal size={size} />
           </motion.div>
@@ -66,18 +59,68 @@ export function FloatingPetals({ count = 5 }: { count?: number }) {
   );
 }
 
-// ─── Scroll-linked Flowers — move with page scroll, never stick ──
-// Uses useScroll() + useTransform() so flowers respond to actual scroll position
+// ─── Individual scroll flower item (separate component = no hook violations) ──
+// Each item always calls its own useTransform hooks consistently.
+
+function ScrollFlowerItem({
+  flower, x, opacityMul, rotateMul, index, scrollYProgress
+}: {
+  flower: React.ReactNode;
+  x: string;
+  opacityMul: number;
+  rotateMul: number;
+  index: number;
+  scrollYProgress: ReturnType<typeof useScroll>["scrollYProgress"];
+}) {
+  const entryProgress = 0.05 + index * 0.07;
+  const exitProgress = entryProgress + 0.25;
+
+  const opacity = useTransform(
+    scrollYProgress,
+    [entryProgress, entryProgress + 0.05, exitProgress - 0.05, exitProgress],
+    [0, 0.3 * opacityMul, 0.25 * opacityMul, 0]
+  );
+
+  const y = useTransform(
+    scrollYProgress,
+    [entryProgress, exitProgress],
+    [`-${10 + index * 5}%`, `${90 + index * 8}%`]
+  );
+
+  const rotation = useTransform(
+    scrollYProgress,
+    [entryProgress, exitProgress],
+    [0, (120 + index * 30) * rotateMul]
+  );
+
+  return (
+    <motion.div
+      className="absolute"
+      style={{ left: x, opacity, y, rotateZ: rotation }}
+      transition={{ type: "tween" }}
+    >
+      <motion.div
+        animate={{ rotateZ: [0, 2, 0, -2, 0] }}
+        transition={{ duration: 8 + index, repeat: Infinity, ease: "easeInOut" }}
+      >
+        {flower}
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ─── Scroll-linked Flowers — desktop only ──────────────────────────
+// Parent component calls useScroll and conditionally renders child items.
+// No hook violations because child items are separate components.
 
 export function ScrollFlowers() {
   const reduced = useReducedMotion();
   const isMobile = useIsMobile();
-  // Don't render until client detection resolves — prevents mobile crash
-  if (reduced || isMobile === null) return null;
-  // Skip scroll-linked flowers entirely on mobile for performance
-  if (isMobile) return null;
-
+  // Always call useScroll — consistent hook call
   const { scrollYProgress } = useScroll();
+
+  // Skip rendering on mobile/reduced/undetected — hooks already called above
+  if (reduced || isMobile === true || isMobile === null) return null;
 
   const placements = [
     { flower: <BigRose3D size={100} />, x: "-5%", opacityMul: 1, rotateMul: 1 },
@@ -92,89 +135,30 @@ export function ScrollFlowers() {
 
   return (
     <div className="fixed inset-0 pointer-events-none z-[1]">
-      {placements.map((p, i) => {
-        // Each flower fades in/out and drifts as the page scrolls
-        const entryProgress = 0.05 + i * 0.07;
-        const exitProgress = entryProgress + 0.25;
-
-        const opacity = useTransform(
-          scrollYProgress,
-          [entryProgress, entryProgress + 0.05, exitProgress - 0.05, exitProgress],
-          [0, 0.3 * p.opacityMul, 0.25 * p.opacityMul, 0]
-        );
-
-        const y = useTransform(
-          scrollYProgress,
-          [entryProgress, exitProgress],
-          [`-${10 + i * 5}%`, `${90 + i * 8}%`]
-        );
-
-        const rotation = useTransform(
-          scrollYProgress,
-          [entryProgress, exitProgress],
-          [0, (120 + i * 30) * p.rotateMul]
-        );
-
-        return (
-          <motion.div
-            key={`scroll-flower-${i}`}
-            className="absolute"
-            style={{
-              left: p.x,
-              opacity,
-              y,
-              rotateZ: rotation,
-            }}
-            transition={{ type: "tween" }}
-          >
-            {/* Gentle sway so it never looks completely frozen */}
-            <motion.div
-              animate={{ rotateZ: [0, 2, 0, -2, 0] }}
-              transition={{ duration: 8 + i, repeat: Infinity, ease: "easeInOut" }}
-            >
-              {p.flower}
-            </motion.div>
-          </motion.div>
-        );
-      })}
+      {placements.map((p, i) => (
+        <ScrollFlowerItem
+          key={`scroll-flower-${i}`}
+          flower={p.flower}
+          x={p.x}
+          opacityMul={p.opacityMul}
+          rotateMul={p.rotateMul}
+          index={i}
+          scrollYProgress={scrollYProgress}
+        />
+      ))}
     </div>
   );
 }
 
 // ─── Hero 3D Flower Animation ──────────────────────────────────────
-// 6 prominent 3D floral elements in the hero with mouse parallax
+// ALL hooks are called unconditionally. Mobile gets simplified JSX.
 
 export function HeroFloralAnimation() {
   const reduced = useReducedMotion();
   const isMobile = useIsMobile();
-  // Don't render until client detection resolves
-  if (reduced || isMobile === null) return null;
-  // On mobile, render only 2 simple lightweight elements (no mouse parallax)
-  if (isMobile) {
-    return (
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]">
-        <motion.div className="absolute top-[22%] left-[5%]"
-          initial={{ opacity: 0, scale: 0.7 }}
-          animate={{ opacity: 0.3, scale: 1 }}
-          transition={{ duration: 2, delay: 0.6, ease: "easeOut" }}>
-          <motion.div animate={{ rotateZ: [0, 3, 0, -3, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
-            <BigRose3D size={55} />
-          </motion.div>
-        </motion.div>
-        <motion.div className="absolute top-[14%] right-[3%]"
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 0.25, scale: 1 }}
-          transition={{ duration: 2, delay: 1.0, ease: "easeOut" }}>
-          <motion.div animate={{ rotateZ: [0, -4, 0, 4, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}>
-            <BigLeaf3D size={45} />
-          </motion.div>
-        </motion.div>
-      </div>
-    );
-  }
 
+  // Always call all hooks — no conditional returns before hooks
   const mouseRef = useRef({ x: 0.5, y: 0.5 });
-
   const baseX = useSpring(useMotionValue(0), { stiffness: 40, damping: 30 });
   const baseY = useSpring(useMotionValue(0), { stiffness: 40, damping: 30 });
 
@@ -202,43 +186,71 @@ export function HeroFloralAnimation() {
   const x6 = useTransform(baseX, (v: number) => v * -0.35);
   const y6 = useTransform(baseY, (v: number) => v * -0.3);
 
+  // All hooks called — now we can safely conditionally render
+  if (reduced) return null;
+
+  // Mobile: 2 lightweight elements (no parallax)
+  if (isMobile === true) {
+    return (
+      <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]">
+        <motion.div className="absolute top-[22%] left-[5%]"
+          initial={{ opacity: 0, scale: 0.7 }}
+          animate={{ opacity: 0.3, scale: 1 }}
+          transition={{ duration: 2, delay: 0.6, ease: "easeOut" }}>
+          <motion.div animate={{ rotateZ: [0, 3, 0, -3, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
+            <BigRose3D size={55} />
+          </motion.div>
+        </motion.div>
+        <motion.div className="absolute top-[14%] right-[3%]"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 0.25, scale: 1 }}
+          transition={{ duration: 2, delay: 1.0, ease: "easeOut" }}>
+          <motion.div animate={{ rotateZ: [0, -4, 0, 4, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}>
+            <BigLeaf3D size={45} />
+          </motion.div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // Desktop or undetected: render full parallax hero (parallax values start at 0)
   return (
     <div className="absolute inset-0 pointer-events-none overflow-hidden z-[2]">
       <motion.div className="absolute top-[22%] left-[2%] sm:left-[5%]" style={{ x: x1, y: y1 }}
-        initial={{ opacity: 0, rotateY: 25, rotateX: -8, scale: 0.7 }}
-        animate={{ opacity: 0.45, rotateY: 0, rotateX: 0, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.7 }}
+        animate={{ opacity: 0.45, scale: 1 }}
         transition={{ duration: 2.5, delay: 0.6, ease: "easeOut" }}>
         <motion.div animate={{ rotateZ: [0, 3, 0, -3, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
           <BigRose3D size={100} />
         </motion.div>
       </motion.div>
       <motion.div className="absolute top-[14%] right-[1%] sm:right-[3%] lg:right-[6%]" style={{ x: x2, y: y2 }}
-        initial={{ opacity: 0, rotateY: -15, scale: 0.8 }}
-        animate={{ opacity: 0.35, rotateY: 0, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 0.35, scale: 1 }}
         transition={{ duration: 2.2, delay: 1.0, ease: "easeOut" }}>
         <motion.div animate={{ rotateZ: [0, -4, 0, 4, 0] }} transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}>
           <BigLeaf3D size={70} />
         </motion.div>
       </motion.div>
       <motion.div className="absolute top-[50%] right-[18%] lg:right-[28%]" style={{ x: x3, y: y3 }}
-        initial={{ opacity: 0, rotateY: 40, scale: 0.6 }}
-        animate={{ opacity: 0.32, rotateY: 0, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 0.32, scale: 1 }}
         transition={{ duration: 2.4, delay: 1.3, ease: "easeOut" }}>
         <motion.div animate={{ rotateZ: [0, 6, 0, -6, 0], y: [0, -10, 0] }} transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}>
           <BigPetal3D size={48} />
         </motion.div>
       </motion.div>
       <motion.div className="absolute bottom-[18%] left-[10%] lg:left-[14%]" style={{ x: x4, y: y4 }}
-        initial={{ opacity: 0, rotateX: 18, scale: 0.6 }}
-        animate={{ opacity: 0.30, rotateX: 0, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.6 }}
+        animate={{ opacity: 0.30, scale: 1 }}
         transition={{ duration: 2, delay: 1.5, ease: "easeOut" }}>
         <motion.div animate={{ rotateZ: [0, -3, 0, 3, 0] }} transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}>
           <BigJasmineCluster3D size={80} />
         </motion.div>
       </motion.div>
       <motion.div className="absolute top-[35%] right-[10%] lg:right-[15%]" style={{ x: x5, y: y5 }}
-        initial={{ opacity: 0, rotateX: 25, scale: 0.5 }}
-        animate={{ opacity: 0.28, rotateX: 0, scale: 1 }}
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: 0.28, scale: 1 }}
         transition={{ duration: 2, delay: 1.8, ease: "easeOut" }}>
         <motion.div animate={{ rotateZ: [0, 5, 0, -5, 0] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}>
           <BigGoldPetal3D size={40} />
@@ -265,32 +277,16 @@ interface SectionTransitionProps {
 export function SectionFloralTransition({ variant }: SectionTransitionProps) {
   const reduced = useReducedMotion();
   const isMobile = useIsMobile();
-  // Don't render until client detection resolves
-  if (reduced || isMobile === null) return null;
-  // Skip section transitions entirely on mobile for performance
-  if (isMobile) return <div className="h-8" />; // Simple spacer on mobile
+
+  if (reduced || isMobile === true) return <div className="h-8" />;
+  if (isMobile === null) return <div className="h-20 sm:h-32" />;
 
   const config: Record<string, { elements: React.ReactNode[]; direction: string }> = {
-    "hero-services": {
-      elements: [<BigRose3D size={80} />, <BigLeaf3D size={50} />, <BigPetal3D size={30} />],
-      direction: "down",
-    },
-    "services-occasions": {
-      elements: [<BigPetal3D size={36} />, <BigGoldPetal3D size={34} />, <BigPetal3D size={24} />],
-      direction: "across",
-    },
-    "occasions-garlands": {
-      elements: [<BigJasmineCluster3D size={80} />, <BigMarigold3D size={70} />, <BigPetal3D size={26} />],
-      direction: "across-reverse",
-    },
-    "garlands-gallery": {
-      elements: [<BigVine3D size={140} />],
-      direction: "curved",
-    },
-    "gallery-booking": {
-      elements: [<BigFlowerCluster3D size={100} />, <BigGoldPetal3D size={30} />],
-      direction: "cluster",
-    },
+    "hero-services": { elements: [<BigRose3D size={80} />, <BigLeaf3D size={50} />, <BigPetal3D size={30} />], direction: "down" },
+    "services-occasions": { elements: [<BigPetal3D size={36} />, <BigGoldPetal3D size={34} />, <BigPetal3D size={24} />], direction: "across" },
+    "occasions-garlands": { elements: [<BigJasmineCluster3D size={80} />, <BigMarigold3D size={70} />, <BigPetal3D size={26} />], direction: "across-reverse" },
+    "garlands-gallery": { elements: [<BigVine3D size={140} />], direction: "curved" },
+    "gallery-booking": { elements: [<BigFlowerCluster3D size={100} />, <BigGoldPetal3D size={30} />], direction: "cluster" },
   };
 
   const { elements: els, direction } = config[variant] || config["hero-services"];
@@ -312,8 +308,7 @@ export function SectionFloralTransition({ variant }: SectionTransitionProps) {
       transition={{ duration: 1.5 }}
     >
       {els.map((el, i) => (
-        <motion.div
-          key={i}
+        <motion.div key={i}
           initial={{ opacity: 0, y: direction === "down" ? -25 : 0, x: direction === "across" || direction === "across-reverse" ? 35 : 0, rotateZ: -8, scale: 0.6 }}
           whileInView={{ opacity: 0.45, y: 0, x: 0, rotateZ: 0, scale: 1 }}
           viewport={{ once: true, amount: 0.3 }}
