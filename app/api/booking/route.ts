@@ -37,20 +37,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
     }
 
-    // Collect image files and convert to base64 data URLs for DB storage
+    // Collect images — can be File objects OR base64 strings from client
     const imageDataUrls: string[] = [];
     const entries = Array.from(formData.entries());
     for (const [key, value] of entries) {
-      if (key.startsWith("image_") && value instanceof File) {
-        if (value.size <= 5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(value.type)) {
-          try {
-            const arrayBuffer = await value.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString("base64");
-            const dataUrl = `data:${value.type};base64,${base64}`;
-            imageDataUrls.push(dataUrl);
-          } catch {
-            // Skip this image if conversion fails
+      if (key.startsWith("image_")) {
+        if (value instanceof File) {
+          // File object — convert to base64 data URL
+          if (value.size <= 5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(value.type)) {
+            try {
+              const arrayBuffer = await value.arrayBuffer();
+              const base64 = Buffer.from(arrayBuffer).toString("base64");
+              const dataUrl = `data:${value.type};base64,${base64}`;
+              imageDataUrls.push(dataUrl);
+            } catch {}
           }
+        } else if (typeof value === "string" && value.startsWith("data:image/")) {
+          // Already a base64 data URL string (from client-side compression)
+          imageDataUrls.push(value);
         }
       }
     }
