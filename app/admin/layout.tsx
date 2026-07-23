@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
-import { LayoutDashboard, Calendar, Image, Settings, LogOut, Menu, X, BookOpen, Moon, Sun, PenTool, Palette } from "lucide-react";
+import { LayoutDashboard, Calendar, Settings, LogOut, Menu, X, BookOpen, Moon, Sun, PenTool } from "lucide-react";
 import { onAuthStateChanged, signOut, setPersistence, browserLocalPersistence, type User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import { cn } from "@/lib/utils";
@@ -21,7 +21,6 @@ const navItems = [
   { href: "/admin/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/admin/bookings", label: "Bookings", icon: BookOpen },
   { href: "/admin/calendar", label: "Calendar", icon: Calendar },
-  { href: "/admin/gallery", label: "Gallery", icon: Image },
   { href: "/admin/content", label: "Edit Website", icon: PenTool },
   { href: "/admin/settings", label: "Settings", icon: Settings },
 ];

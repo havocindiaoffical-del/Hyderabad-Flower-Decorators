@@ -313,19 +313,29 @@ export default function BookingPageContent() {
             <div>
               <span className="label-uppercase text-gold mb-6 block">Additional</span>
               <textarea value={fd.special_notes} onChange={(e) => ch("special_notes", e.target.value)} rows={4} className="flex min-h-[120px] w-full rounded-xl border border-border-light bg-ivory px-4 py-3 text-sm text-charcoal placeholder:text-warm-gray/50 focus:outline-none focus:border-gold resize-none font-body font-light" placeholder="Special notes, color themes, preferences..." />
-              <p className="text-xs text-warm-gray font-body mt-6 mb-3">Reference images — up to 5, max 5MB each</p>
-              <div className="border border-dashed border-border-light rounded-xl p-8 text-center cursor-pointer hover:border-gold/30 transition-colors" onClick={() => fileRef.current?.click()}>
-                <Upload className="w-5 h-5 text-warm-gray mx-auto mb-2" />
-                <p className="text-xs text-warm-gray font-body">Click to upload</p>
+              <div className="mt-6 mb-4">
+                <label className="block label-uppercase text-gold mb-3">Reference Images</label>
+                <p className="text-xs text-warm-gray font-body mb-4">Upload photos of your desired decoration style — up to 5 images, max 5MB each (JPEG, PNG, WebP)</p>
+                <button type="button" onClick={() => fileRef.current?.click()}
+                  className="w-full h-14 rounded-xl bg-charcoal text-ivory flex items-center justify-center gap-3 label-uppercase hover:bg-graphite transition-colors">
+                  <Upload className="w-4 h-4" /> Upload Reference Images
+                </button>
                 <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp" multiple onChange={onUpload} className="hidden" />
               </div>
               {errors.images && <p className="mt-1 text-xs text-red-500">{errors.images}</p>}
               {fd.images.length > 0 && (
-                <div className="mt-4 flex gap-2 flex-wrap">
+                <div className="mt-4 flex gap-3 flex-wrap">
                   {fd.images.map((f, i) => (
                     <div key={i} className="relative group">
-                      <div className="h-10 px-3 rounded-lg bg-cream border border-border-light flex items-center"><span className="text-[10px] text-stone font-body">{f.name}</span></div>
-                      <button type="button" onClick={() => setFd((p) => ({ ...p, images: p.images.filter((_, j) => j !== i) }))} className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"><X className="w-2.5 h-2.5" /></button>
+                      <div className="w-16 h-16 rounded-lg bg-cream border border-border-light overflow-hidden flex items-center justify-center">
+                        <img
+                          src={URL.createObjectURL(f)}
+                          alt={f.name}
+                          className="w-full h-full object-cover"
+                          onLoad={(e) => { URL.revokeObjectURL((e.target as HTMLImageElement).src); }}
+                        />
+                      </div>
+                      <button type="button" onClick={() => setFd((p) => ({ ...p, images: p.images.filter((_, j) => j !== i) }))} className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md hover:bg-red-600 transition-colors"><X className="w-3 h-3" /></button>
                     </div>
                   ))}
                 </div>

@@ -71,8 +71,11 @@ export function useScrollProgress(ref: React.RefObject<HTMLElement | null>) {
 }
 
 // ─── Is Mobile Detection ───────────────────────────────────────────
+// Returns `null` until client-side detection completes, so heavy
+// animations can be deferred and avoid crashing mobile browsers on
+// first render (when the default was `false` / desktop).
 export function useIsMobile() {
-  const [mobile, setMobile] = useState(false);
+  const [mobile, setMobile] = useState<boolean | null>(null);
   useEffect(() => {
     setMobile(window.innerWidth < 768);
     const handler = () => setMobile(window.innerWidth < 768);
@@ -80,4 +83,19 @@ export function useIsMobile() {
     return () => window.removeEventListener("resize", handler);
   }, []);
   return mobile;
+}
+
+// Convenience: returns `true` only when we KNOW it's mobile.
+// Returns `false` when desktop OR when detection hasn't resolved yet
+// (used by components that should render a lightweight fallback).
+export function useIsMobileSafe(): boolean {
+  const m = useIsMobile();
+  return m === true;
+}
+
+// Returns `true` when we KNOW it's NOT mobile (i.e. desktop resolved).
+// Returns `false` for mobile or unresolved — safe for gating heavy desktop features.
+export function useIsDesktopReady(): boolean {
+  const m = useIsMobile();
+  return m === false;
 }

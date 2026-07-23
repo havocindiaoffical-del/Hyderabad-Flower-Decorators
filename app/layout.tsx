@@ -1,10 +1,18 @@
 import { DM_Sans, Playfair_Display, Inter } from "next/font/google";
+import type { Metadata, Viewport } from "next";
 
 const inter = Inter({ variable: "--font-inter", subsets: ["latin"], display: "swap", weight: ["300", "400", "500"] });
 const dmSans = DM_Sans({ variable: "--font-manrope", subsets: ["latin"], display: "swap", weight: ["400", "500", "600", "700"] });
 const playfair = Playfair_Display({ variable: "--font-playfair", subsets: ["latin"], display: "swap", weight: ["400", "500", "600", "700"], style: ["normal", "italic"] });
 
-export const metadata = {
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#FAF8F5",
+};
+
+export const metadata: Metadata = {
   metadataBase: new URL("https://hydflowerdecorators.com"),
   title: { default: "Hyderabad Flower Decorators — Luxury Floral Design", template: "%s — HFD" },
   description: "Hyderabad's finest flower decoration atelier. Bespoke floral design for weddings, housewarming & celebrations.",
